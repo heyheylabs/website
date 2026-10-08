@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Copy the landing page from a pulled heyheylabs/design clone into docs/.
 # Usage: scripts/sync.sh [design-clone] [page folder inside 2026-10-07-hhl-landing-revive]
-# The page on the site is variants/v3-r5 since Thu 8 Oct 2026 (Tim: "push landing page designs that have done"):
+# The page on the site is variants/v3-r5-live (the Thu 8 Oct v3-r5 fix round; LIVE.md) since Fri 9 Oct 2026 (Tim: "push landing page designs that have done"):
 # the fix round over v3, the blind-ranked winner. The favicon always comes from the folder's root (the t01 cut).
 set -euo pipefail
 R="${1:-$HOME/code/design}/2026-10-07-hhl-landing-revive"
-V="${2:-variants/v3-r5}"
+V="${2:-variants/v3-r5-live}"
 D="$R/$V"
 cd "$(dirname "$0")/.."
 git -C "$R/.." pull --rebase -q

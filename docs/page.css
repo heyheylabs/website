@@ -335,11 +335,20 @@ h3 { font: 500 20px/1.3 var(--display); letter-spacing: -0.005em; text-wrap: bal
 .pw { font: 500 12.5px/1 "Saira", var(--sans); font-stretch: 125%; letter-spacing: 0.14em; white-space: nowrap; }
 .pw .dot { display: inline-block; width: 5px; height: 5px; margin-left: 1px; background: #4BF097; animation: hb-blink 1.1s steps(1) infinite; }
 @keyframes hb-blink { 50% { opacity: 0; } }
+/* The three chat dots roll as a wave, one after the other (brands/README.md, hb-dot): up 2.4 px at the
+   20 px mark at 36%, at rest at 0, 72 and 100%, 1.25 s, delays 0, .15 and .3 s. The lift is in each
+   mark's own viewBox units: 2.4 x 32 / 20 for Hey Pharmacist, 2.4 x 624 / 20 for Hey Broker. */
+.prod .pm-hp { --lift: 3.84px; }
+.prod .pm-hb { --lift: 74.88px; }
+.prod .pm .d { animation: hb-dot 1.25s ease-in-out infinite; }
+.prod .pm .d2 { animation-delay: .15s; }
+.prod .pm .d3 { animation-delay: .3s; }
+@keyframes hb-dot { 0%, 72%, 100% { transform: translateY(0); } 36% { transform: translateY(calc(-1 * var(--lift))); } }
 :root[data-theme="light"] .prod { color: #15171A; }
 :root[data-theme="light"] .prod .pm .o { fill: #15171A; }
 :root[data-theme="light"] .prod .pm .i { fill: #FFFFFF; }
 :root[data-theme="light"] .pw .dot { background: #12924F; }
-.reduced .pw .dot { animation: none; }
+.reduced .pw .dot, .reduced .prod .pm .d { animation: none; }
 html:not(.js) .close { min-height: 100svh; padding-bottom: var(--s8); }
 
 /* v3-r5 (review finding 3): 0.4 of a screen longer, so the glowing mark holds for 40vh of scroll before the wordmark */
@@ -482,7 +491,7 @@ html:not(.js) .close { min-height: 100svh; padding-bottom: var(--s8); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pw .dot { animation: none; }
+  .pw .dot, .prod .pm .d { animation: none; }
   .btn, .text-link, .fact, #field, .mode, .mode *, .band-names i { transition: none; }
   .js .pinned, .js .pinned[data-scene] { height: auto; }
   .js .stage { position: relative; top: auto; height: auto; overflow: visible; }
