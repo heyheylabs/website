@@ -1,0 +1,5 @@
+# Found a security problem in anything HEY HEY LABS runs? Please tell us. We reply within two business days.
+Contact: mailto:security@heyheylabs.com.au
+Expires: 2027-10-01T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://heyheylabs.com.au/.well-known/security.txt

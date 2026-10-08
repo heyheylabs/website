@@ -1,0 +1,20 @@
+# HEY HEY LABS
+
+> HEY HEY LABS is a software studio in Melbourne, Australia (Hey Hey Labs Pty Ltd, ACN 702 420 219). We rescue stalled apps and platforms, finish them properly and then run them: design and UX, web and mobile apps, cloud platform and DevOps, marketing and growth, and business intelligence, with security and compliance built into every layer.
+
+Most of our work starts with a build another studio left unfinished. In the first week we read what exists and say plainly what it is worth, move the keys and the hosting into the client's name, keep what is good and finish the rest with fixed dates. Clients own their code outright, and their data is stored in Australia.
+
+Our products run on Asimov Cloud, our own platform, built as code on Google Cloud in Australia. Its certifications (SOC 2, ISO/IEC 27001 and others) are Google Cloud's, covering its infrastructure; they are not certifications of HEY HEY LABS.
+
+## Contact
+
+- [Email](mailto:hello@heyheylabs.com.au): new work, stalled builds, general questions
+- [Security reports](https://heyheylabs.com.au/.well-known/security.txt): security@heyheylabs.com.au
+
+## Pages
+
+- [Home](https://heyheylabs.com.au/): what we do, how we work, how to start
+
+## Products
+
+- Hey Pharmacist: a platform for community pharmacies (online store, scripts, a staff console and delivery)
