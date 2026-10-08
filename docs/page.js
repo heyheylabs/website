@@ -99,11 +99,20 @@ function setTheme(t, how = 'fade'){
   flip();
 }
 syncMode();
-if (modeBtn) modeBtn.addEventListener('click', () => { const t = theme() === 'dark' ? 'light' : 'dark'; store('hhl-theme', t); setTheme(t); });
+// A choice is remembered only while it differs from the system's: toggling back to what the system
+// prefers forgets it, so the page follows the system again (Tim, 9 Oct: "detect system dark or light").
+const systemTheme = () => (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+if (modeBtn) modeBtn.addEventListener('click', () => {
+  const t = theme() === 'dark' ? 'light' : 'dark';
+  if (t === systemTheme()) { try { localStorage.removeItem('hhl-theme'); } catch (e) {} } else store('hhl-theme', t);
+  setTheme(t);
+});
 { let chosen = Q.has('theme'); try { chosen = chosen || !!localStorage.getItem('hhl-theme'); } catch (e) {}
-  const mq = matchMedia('(prefers-color-scheme: light)');
+  // Kept on window: a MediaQueryList nothing references can be collected with its listener, and the
+  // page then stops following the system (measured 9 Oct: the change event never reached it).
+  const mq = (window.__hhlSystemTheme = matchMedia('(prefers-color-scheme: light)'));
   mq.addEventListener && mq.addEventListener('change', e => { if (!chosen) setTheme(e.matches ? 'light' : 'dark'); });
-  if (modeBtn) modeBtn.addEventListener('click', () => { chosen = true; }); }
+  if (modeBtn) modeBtn.addEventListener('click', () => { try { chosen = !!localStorage.getItem('hhl-theme'); } catch (e) { chosen = true; } }); }
 window.__theme = (t, how) => setTheme(t, how);
 
 // ---------- the engine ----------
