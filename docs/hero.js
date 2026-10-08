@@ -16,7 +16,7 @@
 // API (createHero(canvas, opts) returns it; null when the browser cannot draw):
 //   layout     setFrame(cx, cy, radiusPx, glide = 6)  where the sphere sits on screen (CSS px; glide Infinity cuts)
 //              setBox(x0, y0, x1, y1, feather)         the art box light may fall in; zoom and turn stay inside it
-//              setHide([[x0, y0, x1, y1], ...])        text blocks light never paints over (up to 24)
+//              setHide([[x0, y0, x1, y1, a?], ...])    text lines the soft veil sits under (up to 24; a = the line's opacity)
 //              setInteractive(on)                      the orbit hit area on or off (off behind sections)
 //   scroll     setCamera({ yaw, pitch, roll, dist, target }, cut)   getCamera()
 //              setField({ dim, speed, bird })          brightness, time scale, the bird's brightness (0 hides it)
@@ -143,7 +143,7 @@ ${BIRD_ENGINE_DECL}
 uniform float uW, uPass, uAlpha, uEmberA, uSub;
 // the journey's looks (all 0 in the hero): the five bands apart and which is lit, the pillar's line and sparks, the
 // stall's cold embers, other spheres far off, the mark's white
-uniform float uSpread, uLit[5], uPillar, uClock, uEmber, uOthers, uWhite, uShimmer; uniform vec3 uOR, uOU, uOF, uOSpan;
+uniform float uSpread, uLit[5], uPillar, uClock, uEmber, uOthers, uWhite, uShimmer, uAxisOff; uniform vec3 uOR, uOU, uOF, uOSpan;
 uniform vec3 uTint, uPillarTint, uSparkTint; uniform float uAxisK;   // uAxisK: the sphere's own pillar takes the pillar tint (the coral scheme)   // the scheme's light: the lit bands, the pillar's line and its sparks
 out vec4 vCol; out float vPil;   // vPil: how much of this light is the pillar (round 7: the light theme inks it in the scheme's colour)
 ${BIRD_HELPERS_GLSL}
@@ -212,7 +212,7 @@ void main(){
     float e = hash(vec2(c) + 12.7) < 0.2 ? 0.6 : 0.025;
     aK *= mix(1.0, e, uEmber); tint = mix(tint, vec3(0.42, 0.47, 0.6), uEmber); tintK = max(tintK, 0.55*uEmber);
   }
-  if (!own) { float ax = 1.0 - smoothstep(0.03, 0.16, length(pos.xz)); vPil = ax;
+  if (!own) { float ax = 1.0 - smoothstep(0.03, 0.16, length(pos.xz)); vPil = ax; aK *= 1.0 - uAxisOff*ax;   // v3-r2: the axis off at its source (the phone's scene 6, behind the words)
     if (uAxisK > 0.0) { tint = mix(tint, uPillarTint, ax); tintK = max(tintK, ax*uAxisK); } }
   cp = uVP*vec4(pos, 1.0); gl_Position = cp;
   depth = depthOf(cp); zk = zoomOf(cp);
@@ -274,11 +274,46 @@ uniform sampler2D uAcc, uBird, uBloom, uBirdW; uniform vec2 uRes; uniform float 
 // round 8: the two quiet climaxes as light at the pillar's ends (r5): the foot gathers the falling bird in, the crown
 // blooms the new life out (in its colour). Centres in device px, radius in device px.
 uniform vec4 uPools; uniform float uPoolR, uFootA, uCrownA, uShimK; uniform vec3 uFootC, uCrownC;
-uniform vec4 uBox; uniform vec4 uHide[${MAX_HIDE}]; uniform int uHideN; uniform vec3 uBgC, uBgE;
+uniform vec4 uBox; uniform vec4 uHide[${MAX_HIDE}]; uniform float uHideA[${MAX_HIDE}]; uniform int uHideN; uniform vec3 uBgC, uBgE;
+// v3-r3 (review High 1): the words' backing is a soft radial veil, never a rectangle. Each text line's box gives an
+// ellipse around it (semi-axes 1.25 of the box's half size, plus 6 px), feathered out over uVeilF device px (160 CSS px),
+// in the ground colour at uVeilMax (0.7) times that line's own opacity at most; overlapping veils take the larger, never
+// add, so no straight edge ever crosses the sphere, the axis or the birds.
+uniform float uVeilF, uVeilMax;
+float veilOf(vec2 p, vec4 b){
+  vec2 c = (b.xy + b.zw)*0.5, e = (b.zw - b.xy)*0.625 + 6.0*uVeilF/160.0, q = p - c;
+  float k0 = length(q/e); if (k0 <= 1.0) return 1.0;
+  float k1 = length(q/(e*e)), d = k0*(k0 - 1.0)/max(k1, 1e-6);   // distance outside the ellipse, approximated
+  return 1.0 - smoothstep(0.0, uVeilF, d);
+}
 // the light theme (round 6, redrawn in round 7): uDay 0 is night, 1 is day, eased between them for the switch's cross-fade.
 // Day is ink on paper: the shell as Graphite hairlines at uShellA (the Alloy ground shows through, no filled shading), its
 // rim one device pixel at uRimA, the pillar in the scheme's signal colour at full ink, the bird as ink in its own hues.
+// v3-r4 (review finding 4): in the dark theme the flame phoenix's brightest strokes are laid at uFlTop (#FF9A7A) at 0.9
+// at most, so life A reads on a phone inside the sphere's lilac haze; the bird's own light picks where (uFlLo to uFlHi)
+uniform float uFlK, uFlLo, uFlHi; uniform vec3 uFlTop;
 uniform float uDay, uShellA, uRimA, uMorphK, uPilK, uRidgeK; uniform vec3 uDayBg, uDayInk, uSignal; uniform vec4 uRim; uniform vec2 uPx1, uRing;
+// v3-r2 (M33): the pillar's light exists only on the sphere's own axis, pole to pole: the segment the page draws the axis
+// on (device px, top-left origin) and the half width the pillar may spread to. Outside it, the pillar's share of the light
+// (its trails as the sphere moves, strays above and below the poles) is taken out, in both themes. uAxisW 0: no clip.
+uniform vec4 uAxis; uniform float uAxisW, uWashT;
+float axisKeep(vec2 p){
+  if (uAxisW <= 0.0) return 1.0;
+  vec2 a = uAxis.xy, ab = uAxis.zw - uAxis.xy; float L2 = max(dot(ab, ab), 1e-4), t = dot(p - a, ab)/L2;
+  float d = length(p - a - ab*clamp(t, 0.0, 1.0));
+  return (1.0 - smoothstep(uAxisW, uAxisW + 1.5, d));
+}
+// v3-r3 (review top fix 3, M29): in light the pillar is a fine ink line, not a pillar. Its ink may spread at most 1.5 CSS
+// px either side of the axis (3 px wide), and at most 4 px (8 px wide) only over the last 8% at each end, where the
+// poles are; so no heavy black shaft and no blobs at the ends
+float dayPil(vec2 p){
+  if (uAxisW <= 0.0) return 1.0;
+  vec2 a = uAxis.xy, ab = uAxis.zw - uAxis.xy; float L2 = max(dot(ab, ab), 1e-4), t = dot(p - a, ab)/L2;
+  float d = length(p - a - ab*clamp(t, 0.0, 1.0)), s = uVeilF/160.0;
+  float endK = 1.0 - smoothstep(0.02, 0.08, min(t, 1.0 - t));
+  float hw = mix(1.5, 4.0, endK)*s;
+  return 1.0 - smoothstep(hw - 0.5*s, hw + 0.5*s, d);
+}
 float inBox(vec2 p, vec4 b, float f){   // 1 inside the box (x0, y0, x1, y1 in pixels from the top left), 0 outside f away
   vec2 lo = smoothstep(b.xy - f, b.xy, p), hi = 1.0 - smoothstep(b.zw, b.zw + f, p);
   return lo.x*lo.y*hi.x*hi.y;
@@ -290,9 +325,12 @@ void main(){
   vec2 uv = gl_FragCoord.xy/uRes, p = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y);
   float r = length((uv - 0.5)*vec2(uRes.x/uRes.y, 1.0))*1.25;
   float keep = inBox(p, uBox, uFeather);
-  for (int i = 0; i < ${MAX_HIDE}; i++) { if (i >= uHideN) break; keep *= 1.0 - inBox(p, uHide[i], uFeather*0.5); }
+  { float v = 0.0; for (int i = 0; i < ${MAX_HIDE}; i++) { if (i >= uHideN) break; v = max(v, veilOf(p, uHide[i])*uHideA[i]); }
+    keep *= 1.0 - uVeilMax*v; }
   vec3 bd = texture(uBird, uv).rgb; float ko = clamp(mx3(bd)*5.5, 0.0, 0.93);   // the bird veils the shell behind it (r5)
-  vec3 fa = texture(uAcc, uv).rgb*(1.0 - ko), bl = texture(uBloom, uv).rgb*uBloomK;
+  vec4 A0 = texture(uAcc, uv); float axk = axisKeep(p);
+  float pilShare = clamp(A0.a/max(mx3(A0.rgb), 1e-4), 0.0, 1.0)*(1.0 - axk);
+  vec3 fa = A0.rgb*(1.0 - pilShare)*(1.0 - ko), bl = texture(uBloom, uv).rgb*uBloomK;
   float n = fract(sin(dot(gl_FragCoord.xy + fract(uT*7.0)*97.0, vec2(12.9898,78.233)))*43758.5453) - 0.5;
   // ---- night: light added to the Graphite ground ----
   vec3 c = (fa + bd + bl)*uDim*keep;
@@ -306,6 +344,7 @@ void main(){
   vec3 top = min(vec3(uCap), uPeak), kn = top*0.5, sh = max(top - kn, vec3(0.02));
   c = mix(c, kn + sh*(1.0 - exp(-(c - kn)/sh)), step(kn, c));
   c = min(c + n*(1.5/255.0), top);
+  if (uFlK > 0.001) c = mix(c, uFlTop, 0.9*uFlK*smoothstep(uFlLo, uFlHi, mx3(bd))*keep);
   // ---- day: the same light drawn as ink on the Alloy ground ----
   vec3 d = uDayBg;
   if (uDay > 0.001) {
@@ -313,7 +352,7 @@ void main(){
     vec3 bdd = max(bd, max(texture(uBird, uv + vec2(uPx1.x, 0.0)).rgb, texture(uBird, uv + vec2(0.0, uPx1.y)).rgb));   // 2 device px strokes
     float kod = clamp(mx3(bdd)*3.0, 0.0, 0.9);
     vec4 A = texture(uAcc, uv);
-    float Ls = max(mx3(A.rgb) - A.a, 0.0)*(1.0 - kod), pil = A.a*(1.0 - kod);
+    float Ls = max(mx3(A.rgb) - A.a, 0.0)*(1.0 - kod), pil = A.a*(1.0 - kod)*axk;
     // a stroke is light above its neighbourhood: the mean of eight taps on a ring 2.5 CSS px out
     float m = 0.0;
     for (int i = 0; i < 8; i++) { float a = float(i)*0.7853982; vec4 t = texture(uAcc, uv + vec2(cos(a), sin(a))*uRing); m += max(mx3(t.rgb) - t.a, 0.0); }
@@ -321,19 +360,29 @@ void main(){
     float str = (1.0 - exp(-max(Ls - m, 0.0)*uRidgeK))*smoothstep(0.04, 0.16, m + Ls);   // lone strays stay off the paper
     float sh = mix(str, 1.0 - exp(-Ls*1.6), uMorphK);           // the close's condense is the mark's fill, not strokes
     vec3 hue = A.rgb/max(mx3(A.rgb), 1e-4); float sat = mx3(hue) - min(hue.r, min(hue.g, hue.b));
-    float hk = max(smoothstep(0.5, 0.8, sat), uShimK*smoothstep(0.08, 0.3, sat));   // embers (and the close's shimmer) keep their hue
+    // v3-r5 (review finding 7, M29): the bird's embers keep their hue only on the bird itself (inside its wash's
+    // silhouette); the ones it sheds onto the paper outside it go, so no warm haze or smudge is left around the plumage
+    vec3 bw = texture(uBirdW, uv).rgb; float wa = mx3(bw);
+    float silB = smoothstep(uWashT*1.6, uWashT*2.2, wa), emb = smoothstep(0.5, 0.8, sat);
+    float hk = max(emb*silB, uShimK*smoothstep(0.08, 0.3, sat));   // embers on the bird (and the close's shimmer) keep their hue
+    sh *= 1.0 - emb*(1.0 - silB)*(1.0 - uShimK);
     d = mix(d, mix(uDayInk, inkHue(A.rgb), hk), sh*mix(uShellA, 0.6, hk)*mix(1.0, 0.85, uMorphK*uShimK)*k);
     float dr = abs(length(p - uRim.xy) - uRim.z);                // the rim: one device pixel
     d = mix(d, uDayInk, uRimA*(1.0 - smoothstep(0.0, 1.0, dr))*k);
-    d = mix(d, uSignal, (1.0 - exp(-pil*uPilK))*k);             // the pillar, in the scheme's signal colour
+    d = mix(d, uSignal, min(0.5, 1.0 - exp(-pil*dayPil(p)*uPilK))*k);   // the pillar: 50% at most; with the page's axis line at 50% over it, 75% (v3-r3)
     // the bird (round 8, M29): a fine-line ink drawing. Its colour is laid in first as a restrained, transparent wash
     // (the blurred bird, multiplied into the paper like watercolour: the flame phoenix warm, the fenghuang a soft
     // spectrum), then its hairlines are drawn over it in Graphite ink touched with the feather's own hue
-    vec3 bw = texture(uBirdW, uv).rgb; float wa = mx3(bw);
-    vec3 tint = mix(vec3(1.0), bw/max(wa, 1e-4), 0.85);
-    d *= mix(vec3(1.0), tint, clamp(wa*5.0, 0.0, 0.5)*k);
+    // v3-r2 (M29, review fix 1): no halo and no smudge. The wash is FLAT: the bird's silhouette (its blurred light
+    // thresholded hard, so the gaps between barbs close but nothing feathers out past the plumage) filled with the
+    // feather's hue at 25%, laid over the paper, not multiplied into it. Then the line work in Graphite at 70%.
+    // v3-r5 (review finding 7): the wash held inside the line work: its edge set further in (the blurred light at 1.6x
+    // the old threshold, so it no longer spreads past the plumage as a salmon halo) and laid at 18%, a restrained wash
+    float sil = silB*k;
+    vec3 wh = bw/max(wa, 1e-4); wh = mix(vec3(dot(wh, vec3(0.2126, 0.7152, 0.0722))), wh, 1.25);   // the hue, a touch purer
+    d = mix(d, clamp(wh, 0.0, 1.0), 0.18*sil);
     float db = mx3(bdd)*k;
-    d = mix(d, mix(uDayInk, inkHue(bdd), 0.35), (1.0 - exp(-db*3.0))*0.78);
+    d = mix(d, uDayInk, (1.0 - exp(-db*4.0))*0.70);
     d += n*(1.2/255.0);
   }
   o = vec4(mix(c, d, uDay), 1.0);
@@ -416,8 +465,9 @@ export function createHero(cv, opts = {}) {
 
   // the bird: its lap, timing and uniforms come from bird.js
   const morph = { kind: 0, amount: 0 };
+  const axis = { on: false, x0: 0, y0: 0, x1: 0, y1: 0, w: 0 };   // v3-r2: the axis segment the pillar is clipped to (CSS px)
   // the journey's looks, set by setPose (all at rest in the hero)
-  const jl = { spread: 0, lit: new Float32Array(5), pillar: 0, ember: 0, others: 0, white: 0, exit: 0, lift: 0, cap: 0.86, shimmer: 0 };
+  const jl = { axisOff: 0, spread: 0, lit: new Float32Array(5), pillar: 0, ember: 0, others: 0, white: 0, exit: 0, lift: 0, cap: 0.86, shimmer: 0, birdScale: 1 };
   // the look (round 6): the scheme's colours and the theme. day eases to its goal over about 0.3 s (the switch's fade)
   const LK = { ink: PAL.ink, ink2: PAL.ink2, tint: [0.86, 0.91, 1.0], pillar: [0.82, 0.88, 1.0], spark: [1.0, 0.97, 0.9],
     bgC: PAL.bgC, bgE: PAL.bgE, peak: PEAK, day: 0, dayNow: 0, dayBg: [0.922, 0.929, 0.925], dayInk: [0.0824, 0.0902, 0.1020],
@@ -447,7 +497,11 @@ export function createHero(cv, opts = {}) {
   // fewer particles come in only when measured frame time asks for them, never because of a zoom.
   // mb: the bird's motion-blur sub-frames (r5)
   const LEVELS = [{ s: 1.0, r: 1.0, cap: 1e9, mb: 3 }, { s: 1.0, r: 1.0, cap: 2.4e6, mb: 3 }, { s: 0.8, r: 1.0, cap: 2.4e6, mb: 2 }, { s: 0.65, r: 0.75, cap: 2.4e6, mb: 1 }, { s: 0.5, r: 0.5, cap: 2.4e6, mb: 1 }];
-  let lvl = Number.isFinite(opts.quality) ? clamp(opts.quality, 0, LEVELS.length - 1) : 0; const autoQ = !Number.isFinite(opts.quality);
+  // v3-r2: a phone opens at level 1 (the 2.4 MP cap: at 3x it is 0.9 of full size, not visible) and never climbs back
+  // up once it has stepped down, so a scroll never pays for re-allocating the eight render targets twice (the round 8
+  // and v3 phone hitches were level changes: every target dropped and rebuilt on the frame that asked for it)
+  let lvl = Number.isFinite(opts.quality) ? clamp(opts.quality, 0, LEVELS.length - 1) : (phone ? 1 : 0); const autoQ = !Number.isFinite(opts.quality);
+  let lvlFloor = lvl;
   let cw = 0, ch = 0, TW = 0, TH = 0, acc, acc2, birdRT, half, q1, q2, bq1, bq2, px = 1, vw = 1, vh = 1;
   function resize(){
     // the canvas is the large viewport (100lvh), so the iOS toolbar collapsing never resizes it or clears the trails
@@ -474,7 +528,8 @@ export function createHero(cv, opts = {}) {
   const camF = { ...frame };
   const carry = { x: 0, y: 0, r: 1, on: false };   // where the image sat when the trails were last drawn
   const box = { x0: -1e5, y0: -1e5, x1: 1e5, y1: 1e5, f: 48 };   // the art box light may fall in, and its feather
-  let hide = new Float32Array(MAX_HIDE*4), hideN = 0;
+  let hide = new Float32Array(MAX_HIDE*4), hideA = new Float32Array(MAX_HIDE), hideN = 0;
+  const VEIL_F = 160, VEIL_MAX = 0.7;   // v3-r3: the words' soft veil, CSS px and the ground's opacity at most
   let framed = false, glideK = 6;
   const homeDist = () => SPHERE_R/Math.sin(Math.atan(camF.r*2*Math.tan(FOV/2)));   // the distance that draws the sphere at r
 
@@ -670,7 +725,8 @@ export function createHero(cv, opts = {}) {
   // ---------- what the page controls ----------
   let dim = 1, dimGoal = 1, speed = 1, speedGoal = 1, birdK = 1, birdGoal = 1, intro = (STILL !== null || reduced) ? 1 : 0;
   const fieldOn = opts.nofield ? 0 : 1;
-  let simT = STILL !== null ? STILL : 1.5, seed = 1000, timeLock = null;
+  // v3-precision: opts.startT, where the hero's free loop begins (seconds), so the first seconds can show a chosen part of the lap
+  let simT = STILL !== null ? STILL : (Number.isFinite(opts.startT) ? opts.startT : 1.5), seed = 1000, timeLock = null;
 
   function tick(dt){
     const k = 1 - Math.exp(-dt*3.0);
@@ -702,7 +758,8 @@ export function createHero(cv, opts = {}) {
     mx += ((parallax ? tmx : 0) - mx)*pk; my += ((parallax ? tmy : 0) - my)*pk;
     const eye = currentEye(); camEye = eye;
     rig.setLift(jl.lift);
-    const exitOf = b => { if (jl.exit > 0) {   // the close: the last pass drawn along the shell into the top pole
+    // v3-precision: birdScale, the bird's size against the sphere's (an oversized sphere keeps a bird of about the hero's size)
+    const exitOf = b => { b.scale *= jl.birdScale; if (jl.exit > 0) {   // the close: the last pass drawn along the shell into the top pole
       const e = jl.exit; b.pullT = Math.max(b.pullT, e); b.absorb = Math.max(b.absorb, smooth01(0, 0.6, e)); b.poleD = [0, 1, 0]; b.pole = rig.TOP_IN; } return b; };
     bird = exitOf(rig.at(simT, phase));
     // the plumes are simulated in the bird's own unfitted flight, then the fit to the flight box moves the whole bird
@@ -747,7 +804,7 @@ export function createHero(cv, opts = {}) {
     gl.uniform1f(u.uEmberA, BIRD.emberAlpha*(1 - smooth01(-0.9, 0, bird.pullT)));   // embers go dark before the death
     gl.uniform3fv(u.uTint, LK.tint); gl.uniform3fv(u.uPillarTint, LK.pillar); gl.uniform3fv(u.uSparkTint, LK.spark); gl.uniform1f(u.uAxisK, LK.axisK || 0);
     gl.uniform1f(u.uShimmer, jl.shimmer);
-    gl.uniform1f(u.uSpread, jl.spread); gl.uniform1fv(u['uLit[0]'], jl.lit); gl.uniform1f(u.uPillar, jl.pillar);
+    gl.uniform1f(u.uSpread, jl.spread); gl.uniform1f(u.uAxisOff, jl.axisOff); gl.uniform1fv(u['uLit[0]'], jl.lit); gl.uniform1f(u.uPillar, jl.pillar);
     gl.uniform1f(u.uClock, clock); gl.uniform1f(u.uEmber, jl.ember); gl.uniform1f(u.uOthers, jl.others); gl.uniform1f(u.uWhite, jl.white);
     { const f = norm(sub(cam.t, eye)), r = norm(cross(f, [0, 1, 0])), up = cross(r, f);
       gl.uniform3fv(u.uOR, r); gl.uniform3fv(u.uOU, up); gl.uniform3fv(u.uOF, f); gl.uniform3fv(u.uOSpan, [150*cw/ch, 150, 420]); }
@@ -774,6 +831,8 @@ export function createHero(cv, opts = {}) {
           const nb = g.nb*lod, E = g.sr + nb*2*g.sb;
           gl.uniform1f(v.uGrp, g.grp); gl.uniform1f(v.uNF, g.nf); gl.uniform1f(v.uNb, nb); gl.uniform1f(v.uSR, g.sr); gl.uniform1f(v.uSB, g.sb);
           gl.uniform1f(v.uSlant, g.slant); gl.uniform1f(v.uRachA, g.ra || 1); gl.uniform1f(v.uWR, g.wr); gl.uniform1f(v.uWB, g.wb);
+          if (g.fh && (b.life || 0) < 1e-3) continue;   // fh5: the fenghuang's own groups (the inner plumes, the head's lines)
+          if (v.uFOff) gl.uniform1f(v.uFOff, g.foff || 0); if (v.uHeadG) gl.uniform1f(v.uHeadG, g.grp === 9 ? 2 : g.grp === 4 || g.grp === 8 ? 1 : 0);
           gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, ((g.outer && (b.life || 0) < 1e-3) ? g.outer : g.count)*E);
         }
       }
@@ -804,8 +863,9 @@ export function createHero(cv, opts = {}) {
     bindTex(0, q2.t); gl.uniform1f(pBlur.u.uR, 3.5*bz); quadTo(q1);
     if (LK.dayNow > 0.001) {   // the bird alone, blurred about 6 CSS px: the light theme's watercolour wash under the line work
       gl.useProgram(pDown.p); bindTex(0, birdRT.t); gl.uniform2f(pDown.u.uTx, 1/birdRT.w, 1/birdRT.h); gl.uniform1f(pDown.u.uTwo, 0); gl.uniform1f(pDown.u.uThr, 0); quadTo(bq1);
-      gl.useProgram(pBlur.p); bindTex(0, bq1.t); gl.uniform2f(pBlur.u.uTx, 1/bq1.w, 1/bq1.h); gl.uniform1f(pBlur.u.uR, 1.5); quadTo(bq2);
-      bindTex(0, bq2.t); gl.uniform1f(pBlur.u.uR, 2.5); quadTo(bq1);
+      // v3-precision: a tighter wash (1.2 and 1.8 texels, was 1.5 and 2.5), so the colour hugs the plumage on paper
+      gl.useProgram(pBlur.p); bindTex(0, bq1.t); gl.uniform2f(pBlur.u.uTx, 1/bq1.w, 1/bq1.h); gl.uniform1f(pBlur.u.uR, 1.2); quadTo(bq2);
+      bindTex(0, bq2.t); gl.uniform1f(pBlur.u.uR, 1.8); quadTo(bq1);
     }
     const u = pFin.u; gl.useProgram(pFin.p);
     bindTex(0, acc.t); bindTex(1, birdRT.t); bindTex(2, q1.t); bindTex(3, bq1.t); gl.uniform1i(u.uAcc, 0); gl.uniform1i(u.uBird, 1); gl.uniform1i(u.uBloom, 2); gl.uniform1i(u.uBirdW, 3);
@@ -823,21 +883,30 @@ export function createHero(cv, opts = {}) {
     const sx = cw/vw;
     gl.uniform4f(u.uBox, box.x0*sx, box.y0*sx, box.x1*sx, box.y1*sx); gl.uniform1f(u.uFeather, Math.max(1, box.f*sx));
     const hs = new Float32Array(MAX_HIDE*4); for (let i = 0; i < hideN*4; i++) hs[i] = hide[i]*sx;
-    gl.uniform4fv(u['uHide[0]'], hs); gl.uniform1i(u.uHideN, hideN);
+    gl.uniform4fv(u['uHide[0]'], hs); gl.uniform1fv(u['uHideA[0]'], hideA); gl.uniform1i(u.uHideN, hideN);
+    gl.uniform1f(u.uVeilF, VEIL_F*sx); gl.uniform1f(u.uVeilMax, VEIL_MAX);
     gl.uniform1f(u.uT, bird.T); gl.uniform1f(u.uDim, dim); gl.uniform3fv(u.uBgC, LK.bgC); gl.uniform3fv(u.uBgE, LK.bgE); gl.uniform1f(u.uCap, jl.cap); gl.uniform3fv(u.uPeak, LK.peak);
+    { // v3-r4: life A only (bird.life 0 is the flame phoenix), night only
+      // measured against the bird's own strength (birdK), so a bird the scene quietens (scene 2's 0.3) still reads
+      const bk = Math.max(0.2, birdK*birdIn), fk = (1 - clamp(bird.life || 0, 0, 1))*(1 - LK.dayNow)*smooth01(0.05, 0.2, birdK*birdIn);
+      gl.uniform1f(u.uFlK, fk); gl.uniform1f(u.uFlLo, FL_LO*bk); gl.uniform1f(u.uFlHi, FL_HI*bk); gl.uniform3fv(u.uFlTop, [1.0, 0x9A/255, 0x7A/255]); }
     gl.uniform1f(u.uDay, LK.dayNow); gl.uniform3fv(u.uDayBg, LK.dayBg); gl.uniform3fv(u.uDayInk, LK.dayInk); gl.uniform3fv(u.uSignal, LK.signal || LK.dayInk);
     gl.uniform1f(u.uShellA, 0.22); gl.uniform1f(u.uRidgeK, 30.0); gl.uniform1f(u.uPilK, 3.0);
+    gl.uniform4f(u.uAxis, axis.x0*sx, axis.y0*sx, axis.x1*sx, axis.y1*sx); gl.uniform1f(u.uAxisW, axis.on ? Math.max(1.5, axis.w*sx) : 0); gl.uniform1f(u.uWashT, 0.06);
     gl.uniform1f(u.uMorphK, morph.kind === 2 ? morph.amount : 0);
     gl.uniform2f(u.uPx1, 1/cw, 1/ch); gl.uniform2f(u.uRing, 2.5*sx/cw, 2.5*sx/ch);
     { // the rim: where the sphere's silhouette falls, in device px, while the sphere is whole and large enough to have one
       const o = sphereOnScreen(camEye, cam.t, cam.roll, 1), pres = fieldOn*intro*intro*(1 - jl.spread)*(1 - smooth01(0, 0.25, morph.kind === 2 ? morph.amount : 0))
-        *(1 - 0.9*jl.ember)*(1 - jl.white)*(1 - jl.others)*smooth01(10, 24, o.r);
+        *(1 - 0.9*jl.ember)*(1 - jl.white)*(1 - jl.others)*smooth01(7, 16, o.r);   // v3-precision: from r 7 (was 10), so the phone's bead (scene 6) keeps its ink rim
       gl.uniform4f(u.uRim, o.x*sx, o.y*sx, o.r*sx, 0); gl.uniform1f(u.uRimA, 0.6*pres); }
     quadTo(null);
     if (probe && (probe.tick = (probe.tick || 0) + 1) % 3 === 0) sampleProbe();
   }
 
   // a held moment: clear the trails and simulate 1.5 s at 60 fps up to it (the still hook, reduced motion, a seek)
+  // the flame strokes' range in the bird's own light (test hook ?fl=lo,hi)
+  const FLQ = (new URLSearchParams(location.search).get('fl') || '').split(',').map(Number);
+  const FL_LO = Number.isFinite(FLQ[0]) && FLQ.length === 2 ? FLQ[0] : 0.12, FL_HI = Number.isFinite(FLQ[1]) && FLQ.length === 2 ? FLQ[1] : 0.45;
   const REDUCED_T = Number.isFinite(opts.reducedT) ? opts.reducedT : 6.2;
   function hold(t){
     [acc, birdRT].forEach(clearRT);
@@ -875,7 +944,7 @@ export function createHero(cv, opts = {}) {
     const capped = Math.abs(med - 1000/30) < 2 && lo > 30;           // a steady 30 Hz is the display's pace, not load
     const zooming = performance.now() - zoomAt < 2500 || cam.z < 0.8;  // a zoom alone never costs resolution
     if (autoQ && med > 22 && !capped && !zooming && !slowFrame && lvl < LEVELS.length - 1) { lvl++; resize(); fastRuns = 0; }
-    else if (autoQ && med < 11 && lvl > 0 && ++fastRuns >= 3) { lvl--; resize(); fastRuns = 0; }
+    else if (autoQ && !phone && med < 11 && lvl > lvlFloor && ++fastRuns >= 3) { lvl--; resize(); fastRuns = 0; }
   }
   const held = () => STILL !== null || reduced;
   let needHold = false;
@@ -914,10 +983,12 @@ export function createHero(cv, opts = {}) {
     // the art box light may fall in (CSS pixels from the top left) and its feather
     setBox(x0, y0, x1, y1, f = 48){ Object.assign(box, { x0, y0, x1, y1, f }); orbBox = ''; },
     // text blocks light must stay off: [[x0, y0, x1, y1], ...] in CSS pixels, at most 24 (the rest are ignored)
-    setHide(rects){ hideN = Math.min(MAX_HIDE, rects.length); for (let i = 0; i < hideN; i++) hide.set(rects[i], i*4); },
+    setHide(rects){ hideN = Math.min(MAX_HIDE, rects.length); for (let i = 0; i < hideN; i++) { const r = rects[i]; hide.set([r[0], r[1], r[2], r[3]], i*4); hideA[i] = r.length > 4 ? Math.max(0, Math.min(1, r[4])) : 1; } },
     setDim(k){ dimGoal = k; }, setBird(k){ birdGoal = k; },
     setSpeed(k){ speedGoal = k; slowFrame = k < 0.6; },
     // setFlight([x0, y0, x1, y1]) the box the bird stays inside (CSS px), or null for none (round 7)
+    // setAxis([x0, y0, x1, y1], halfWidth) the pillar's light only on this segment (CSS px), or null to unclip (v3-r2, M33)
+    setAxis(seg, w = 6){ if (!seg) { axis.on = false; return; } axis.on = true; [axis.x0, axis.y0, axis.x1, axis.y1] = seg; axis.w = w; },
     setFlight(r){ if (!r) { flight.on = false; return; } flight.on = true; [flight.x0, flight.y0, flight.x1, flight.y1] = r; },
     get birdBox(){ return flight.on && bird.absorb < 0.35 ? birdBox(viewProj(camEye, cam.t, cam.roll), bird) : null; },
     get flight(){ return flight.on ? [flight.x0, flight.y0, flight.x1, flight.y1] : null; },
@@ -925,6 +996,8 @@ export function createHero(cv, opts = {}) {
     setInteractive(on){ if (interactive === !!on) return; interactive = !!on; if (!on) { ptrs.clear(); drag = null; } orbBox = ''; },
     onFirstUse(f){ onUsed = f; },
     get sphere(){ return orbInfo; },
+    // v3-r4: the shell's exact silhouette on screen now (CSS px), for the page's word clearance
+    get silhouette(){ const o = sphereOnScreen(camEye, cam.t, cam.roll, 1); return { x: o.x, y: o.y, r: o.r }; },
     resetView(){ resetView(); wake(); },
     seek(t){ hold(t); },
     get frameMs(){ return lastMs; },
@@ -961,7 +1034,7 @@ export function createHero(cv, opts = {}) {
       if (P.dim !== undefined) dim = dimGoal = P.dim;
       if (P.speed !== undefined) speed = speedGoal = P.speed;
       if (P.bird !== undefined) birdK = birdGoal = P.bird;
-      for (const k of ['spread', 'pillar', 'ember', 'others', 'white', 'exit', 'lift', 'cap', 'shimmer']) if (P[k] !== undefined) jl[k] = P[k];
+      for (const k of ['axisOff', 'spread', 'pillar', 'ember', 'others', 'white', 'exit', 'lift', 'cap', 'shimmer', 'birdScale']) if (P[k] !== undefined) jl[k] = P[k];
       if (P.lit) jl.lit.set(P.lit);
       if (P.morph !== undefined) { morph.kind = P.morph > 0 ? 2 : 0; morph.amount = clamp(P.morph, 0, 1); }
       if ('loopT' in P) timeLock = P.loopT === null ? null : +P.loopT;

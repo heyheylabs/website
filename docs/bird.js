@@ -8,24 +8,18 @@
 // the pillar's foot. On top of r5: two lives (M27). Loop 0, 2, 4 ... is life A, the flame phoenix (r5's Phoenix flame
 // ramp); loop 1, 3 ... is life B, the rainbow fenghuang. The rebirth at the top pole is where one becomes the other.
 //
-// ============================================================================================================
-// LIFE B IS A PLACEHOLDER (clearly marked; search "PLACEHOLDER LIFE B").
-//   The real fenghuang is being built in 2026-10-07-hhl-phoenix-field/lab/fh*.html. Until it lands, life B is r5's
-//   bird with: the whole spectrum laid across the plumage at once (head and crest warm, the wings through gold and
-//   green, the long plumes out to blue and violet at their tips), a fuller, taller crest, longer primaries, and longer,
-//   wider-fanned tail plumes. Everything that differs between the lives reads two uniforms, the same names fh1 uses:
-//     uFh  0..1  the form of life B (crest, primaries, tail)       uRb  0..1  the spectrum's weight
-//   plus uHue0 (the spectrum's starting hue, in turns). The rig sets them from the loop (rig.lifeOf).
-//
-// HOW TO DROP IN THE REAL FENGHUANG (one swap point, this file):
-//   1. From lab/fh*.html, copy its BIRD template string over BIRD_GLSL below (keep the `gSpec` writes, or set gSpec
-//      in its part functions: the spectral position 0..1 of the point being drawn; fh1's `spec` argument is the same
-//      thing), and its spectral()/oklch() and birdCol() over the ones in BIRD_LOOK_GLSL. fh1 already speaks uFh, uRb
-//      and uHue0, so hero.js needs no change.
-//   2. Copy its JS rest shapes (restLocal: the crest and tail chains) and plumeLenJS into createRig below, and its
-//      STROKES table (fh1 adds `outer` counts: the flame life draws only the outer pair; hero.js honours `outer`).
-//   3. If its chains have more nodes, change CH and CHAIN_N (uChain's size) together.
-//   4. Reload with ?scene=4&p=0.7 (the rebirth) and ?scene=7&p=0.3 (the last pass) and shoot.
+// v3-r2 (Thu 8 Oct 2026): THE FH5 BIRD IS IN (both lives), through this swap point.
+//   From 2026-10-07-hhl-phoenix-field/lab/fh5.html (design 081dc852): its geometry whole (BIRD_GLSL: the fenghuang's
+//   upright S of a neck and its head, the crest of five, broader wings, the tail of seven with eye and flame tips, body
+//   feathers facing the viewer), its birdXf (the head-first draw into the pole, the two births: a flame licking up off the
+//   crown, a ring of light turning round it), its birdHue and nine-argument birdCol (the white-gold core, the eyes), its
+//   point pass (the sparkle along the silk, the eye's one spark), its stroke pass and STROKES table (the inner plumes and
+//   the head's line work for life B only), and its rest shapes (restLocal, plumeLenJS, LEN_B).
+//   Kept from the landing: its own lap (the page's loop clock is tuned to it, and the scroll holds it), the pole
+//   direction for the close's last pass (uPoleD), the absorb into the pole, the engine's day drawing.
+//   Not ported (engine passes, outside this file): fh5's soft mass pass for the torso and head, its wisp pass, its depth of
+//   field, its second lap with free flight for life B. hero.js changed by two lines only: the stroke loop sets uFOff and
+//   uHeadG and skips life B's own groups while life A flies.
 // ============================================================================================================
 //
 // SWAP POINT. Everything that is the bird lives in this file; hero.js uses only what is exported here.
@@ -55,17 +49,38 @@ float zoomOf(vec4 cp){ return clamp(zoomRaw(cp), 0.6, 1.15); }              // p
 float zoomGain(vec4 cp){ return clamp(sqrt(zoomRaw(cp)/1.15), 1.0, 1.8); }  // and the light they lose comes back as brightness`;
 
 export const BIRD_GLSL = `
+// fh5 (2026-10-07-hhl-phoenix-field/lab/fh5.html, design 081dc852), ported whole through the swap point (v3-r2).
+uniform float uAbsorb; uniform vec3 uPole;                // the landing's absorb: drawn into a pole
+
 // The phoenix in full plumage, in its own frame: x across the wings, y off its back, z toward the head.
 // Every part is drawn as feathers: a shaft, a vane edge and barbs slanting toward the tip, so the bird reads as strokes.
 // h.x picks the part; the leftover fractions of h pick the feather and the place on it. info: part, tip, heat, weight.
 uniform vec3 uPath[8]; uniform float uPathStep, uUnfurl;   // uUnfurl: 0 folded at rebirth, 1 open
-// the plumes are simulated (verlet chains, see simulate() in bird.js): two tail plumes of 28 nodes, then two crest
-// plumes of 16, in the bird's own frame. uAmp: the beat's amplitude (gliding is small), uTuck: the wings swept back
+// the plumes are simulated (verlet chains with inertia, air drag and a feather's stiffness, see simChains): two tail
+// plumes of 28 nodes, then two crest plumes of 16, in the bird's own frame. uAmp: the beat's amplitude (gliding is
+// small), uTuck: the wings swept back for the dive.
 uniform vec3 uChain[88]; uniform float uAmp, uTuck;
-uniform float uAbsorb; uniform vec3 uPole;                // drawn into a pole: 0 flying, 1 gone; the point just inside it
-uniform float uFh;                                        // PLACEHOLDER LIFE B: the fenghuang's form, 0 phoenix, 1 fenghuang
-float gSpec = 0.0;                                        // the spectral place (0..1) of the point last drawn (life B's colour)
+uniform vec3 uViewL;                                 // r7: the direction to the eye in the bird's own frame
+// r7: how much of a body or neck feather shows. The torso and neck are tubes of feathers; seen from the side, the ones
+// edge-on at the silhouette piled into an outline and the far side's shafts crossed the near side as chords. Only the
+// feathers facing the viewer are drawn (a soft turn-off from 55 degrees round to edge-on), so the torso fills like a wing
+float facing(vec3 n, vec3 ax){ vec3 v = uViewL - ax*dot(uViewL, ax), m = n - ax*dot(n, ax); float l = length(v);   // ax: the tube's axis
+  if (l < 1e-3 || length(m) < 1e-3) return 1.0;
+  return mix(1.0, smoothstep(-0.05, 0.55, dot(normalize(m), v/l)), clamp(l*2.5, 0.0, 1.0)); }
+// r7: a body feather's sparks sit on its barbs (a few on the shaft), never on the vane's edge, so no outline is traced
+vec3 vaneB(float r1, float r2, float r3, float nb, float slant){
+  if (r1 < 0.3) return vec3(r2, (r3 - 0.5)*0.05, 0.9);
+  float b = floor(r2*nb), side = fract(r2*nb) < 0.5 ? -1.0 : 1.0;
+  return vec3(min((b + 0.5)/nb + r3*slant, 1.0), side*sqrt(r3), 0.6);
+}
+// fh: the two lives. uFh 0 is the flame phoenix (r5's form), 1 the fenghuang: a longer S of a neck, a crest of five
+// plumes, broader wings with longer primaries, a tail of seven plumes (eye tips and flame points). The rebirth morphs
+// one into the other as the wings unfold. gSpec: where a point sits on the bird's spectrum (0 the wing's leading edge,
+// 1 the tail's tips); gCore: how much of the white-gold core it carries; gEye: the eye ring's pattern on a plume tip.
+uniform float uFh;
+float gSpec = 0.0, gCore = 0.0, gEye = 0.0, gEdge = 0.0, gSpark = 0.0, gHead = 0.0;   // fh4: gSpark marks the eye's one spark; gHead the head, neck and crest   // fh3: gEdge, where the fenghuang's plumes and crest tips sparkle
 const float PI = 3.14159265;
+vec3 headPos(){ return mix(vec3(0.0, 0.135, 0.54), vec3(0.0, 0.33, 0.585), uFh); }   // fh3: the fenghuang carries its head high on an upright neck
 vec3 bdir(float sweep, float elev){ return vec3(cos(elev)*cos(sweep), sin(elev), -cos(elev)*sin(sweep)); }
 vec3 pathAt(float s){                              // the flight path behind the bird, s local units back from its centre
   float k = clamp(s/uPathStep, 0.0, 6.999); int i = int(k); float f = k - float(i);
@@ -75,86 +90,108 @@ vec3 pathAt(float s){                              // the flight path behind the
   if (over > 0.0) p = uPath[7] + normalize(uPath[7] - uPath[6] + vec3(0.0, 0.0, -1e-4))*over;
   return p;
 }
+// where a particle sits on a feather: u along the shaft, v across the vane (-1 leading, +1 trailing), and its weight
 vec3 vane(float r1, float r2, float r3, float nb, float slant){
   if (r1 < 0.36) return vec3(r2, (r3 - 0.5)*0.05, 1.0);                                   // the shaft
   if (r1 < 0.60) return vec3(r2, (r3 < 0.5 ? -1.0 : 1.0)*(0.92 + 0.16*fract(r3*2.0)), 0.7); // the vane edge
   float b = floor(r2*nb), side = fract(r2*nb) < 0.5 ? -1.0 : 1.0;                        // barbs
   return vec3(min((b + 0.5)/nb + r3*slant, 1.0), side*r3, 0.5);
 }
-// the shaft is a curve: its tip sweeps toward the trailing side as c*L*u*u (a 3% sagitta)
+// The shaft is a curve, not a rod: in the vane's own plane its tip sweeps toward the trailing side as c*L*u*u with
+// c = 0.12, so the chord's midpoint sits 3% of the feather's length off the shaft (sagitta c/4, over sqrt(1 + c*c)).
+// B keeps only the air's bend out of that plane; the vane is laid out across the curved shaft's local normal.
 const float SAG_C = 0.12;
 vec3 feather(vec3 R, vec3 D, vec3 N, vec3 B, float L, float wv, vec3 uv){
   vec3 P = normalize(cross(N, D));
   float u = uv.x;
   float w = wv*L*sqrt(max(sin(PI*min(u*1.12, 1.0)), 0.0))*(1.0 - 0.3*u)*(uv.y < 0.0 ? 0.45 : 1.0);
   vec3 Pl = normalize(P - D*(2.0*SAG_C*u));
-  return R + D*(L*u) + P*(SAG_C*L*u*u) + N*(dot(B, N)*L*u*u) + Pl*(uv.y*w);
+  // fh4 (M32): each feather has its own slight S across its length and a slow flutter out of its plane, growing to the
+  // tip; each barb sweeps toward the tip along its length (a curve, not a ruled line) and its end flickers in the air
+  float sd = fract(sin(dot(R, vec3(91.7, 47.3, 13.1)))*4375.5453)*6.2831853;
+  vec3 bend = P*(0.010*L*sin(PI*u*1.6 + sd)*u) + N*(L*u*u*(0.022*sin(uT*1.3 + sd) + 0.008*sin(uT*4.1 + sd*2.0 + u*5.0)));
+  float ay = abs(uv.y);
+  vec3 barbC = D*(0.30*w*ay*ay) + N*(0.10*w*ay*ay*sin(uT*3.7 + sd + u*9.0));
+  return R + D*(L*u) + P*(SAG_C*L*u*u) + N*(dot(B, N)*L*u*u) + Pl*(uv.y*w) + bend + barbC;
 }
-float fjit(float n){ return fract(sin(n*12.9898 + 4.1414)*43758.5453); }
-float featherFade(float u){ return 1.0 - smoothstep(0.85, 1.0, u); }
-float rootFade(float u){ return smoothstep(0.0, 0.15, u); }
+float fjit(float n){ return fract(sin(n*12.9898 + 4.1414)*43758.5453); }   // a fixed jitter per feather, 0 to 1
+float featherFade(float u){ return 1.0 - smoothstep(0.85, 1.0, u); }      // every feather fades out over its last 15%
+float rootFade(float u){ return smoothstep(0.0, 0.15, u); }              // flight feathers rise out of the coverts, no hard root line
 void bones(float ph, out vec3 sh, out vec3 el, out vec3 wr, out vec3 tp, out vec3 dH, out float fold){
   float e = sin(ph), rising = cos(ph);
-  fold = mix(1.0, max(smoothstep(-0.2, 0.9, rising)*0.7*uAmp, uTuck), smoothstep(0.0, 0.7, uUnfurl));
-  float th = mix(0.34 + 0.62*e*uAmp, 0.12, uTuck);
+  fold = mix(1.0, max(smoothstep(-0.2, 0.9, rising)*0.7*uAmp, uTuck), smoothstep(0.0, 0.7, uUnfurl));   // folds at the wrist on the upstroke; born folded
+  float th = mix(0.34 + 0.62*e*uAmp, 0.12, uTuck);     // a raised V plus the beat; swept low and back for the dive
   sh = vec3(0.07, 0.035, 0.10);
   el = sh + bdir(-0.15 + 0.40*fold, th)*0.30;
   wr = el + bdir(0.12 + 0.80*fold, th + 0.18*sin(ph - 0.7))*0.40;
-  dH = bdir(0.32 + 1.0*fold, th + 0.40*sin(ph - 1.2));
+  dH = bdir(0.32 + 1.0*fold, th + 0.40*sin(ph - 1.2));  // the hand lags the arm
   tp = wr + dH*0.38;
 }
+// the leading edge as one smooth curve: Catmull-Rom through shoulder, elbow, wrist and tip (t 0 to 3), arcing a little
+// forward, so the roots of the flight feathers and the marginal coverts never line up on a ruler-straight bone
 vec3 armAt(float t, vec3 sh, vec3 el, vec3 wr, vec3 tp){
   float k = clamp(t, 0.0, 2.999); int i = int(k); float f = k - float(i);
   vec3 a0 = 2.0*sh - el, a4 = 2.0*tp - wr;
   vec3 a = i == 0 ? a0 : (i == 1 ? sh : el), b = i == 0 ? sh : (i == 1 ? el : wr);
   vec3 c = i == 0 ? el : (i == 1 ? wr : tp), d = i == 0 ? wr : (i == 1 ? tp : a4);
   vec3 p = 0.5*((2.0*b) + (-a + c)*f + (2.0*a - 5.0*b + 4.0*c - d)*f*f + (-a + 3.0*b - 3.0*c + d)*f*f*f);
-  return p + vec3(0.0, 0.012, 0.080)*sin(PI*pow(clamp(t/3.0, 0.0, 1.0), 1.6));
+  return p + vec3(0.0, 0.012, 0.080)*sin(PI*pow(clamp(t/3.0, 0.0, 1.0), 1.6));   // most forward at the wrist
 }
-vec3 chainAt(int base, int n, float x){
+// a long pheasant plume, like the two feathers on Sun Wukong's cap: it follows the path the bird just flew, sweeps out
+// to its own side in a long S, and carries a slow travelling wave that grows toward the tip
+vec3 chainAt(int base, int n, float x){              // Catmull-Rom through a simulated chain, x in node units
   float k = clamp(x, 0.0, float(n - 1) - 1e-3); int i = int(k); float f = k - float(i);
   vec3 a = uChain[base + max(i - 1, 0)], b = uChain[base + i], c = uChain[base + min(i + 1, n - 1)], d = uChain[base + min(i + 2, n - 1)];
   return 0.5*((2.0*b) + (-a + c)*f + (2.0*a - 5.0*b + 4.0*c - d)*f*f + (-a + 3.0*b - 3.0*c + d)*f*f*f);
 }
-// PLACEHOLDER LIFE B: the fenghuang's plumes run 30% longer
-float plumeLen(float kk){ return (kk > 0.0 ? 2.95 : 2.75)*(1.0 + 0.30*uFh)*mix(0.06, 1.0, smoothstep(0.4, 1.0, uUnfurl)); }
+float plumeLen(float kk);
+vec3 chainDir(int base, int n, float x){             // fh2: the chain's direction from its node segments, no second spline
+  float k = clamp(x, 0.0, float(n - 1) - 1e-3); int i = int(k); float f = k - float(i);
+  vec3 a = uChain[base + min(i + 1, n - 1)] - uChain[base + i], b = uChain[base + min(i + 2, n - 1)] - uChain[base + min(i + 1, n - 1)];
+  return mix(a, b, smoothstep(0.0, 1.0, f)*step(float(i), float(n) - 2.5)); }
+// a long pheasant plume, like the two feathers on Sun Wukong's cap: its rachis is the simulated chain
 vec3 spine(float s, float kk){ return chainAt(kk < 0.0 ? 0 : 28, 28, (s - 0.3)/max(plumeLen(kk), 1e-3)*27.0); }
+float plumeLen(float kk){ return (kk > 0.0 ? 2.95 : 2.75)*mix(0.06, 1.0, smoothstep(0.4, 1.0, uUnfurl)); }   // unfurl last
 float barred(float u, float n){ float b = fract(u*n); return 0.45 + 0.55*smoothstep(0.08, 0.22, b)*(1.0 - smoothstep(0.58, 0.72, b)); }
+vec3 crestWave(float u, float kk){ return vec3(sin(u*4.0 - uT*2.6 + kk*1.3), 0.6*sin(u*3.2 - uT*2.1 + kk), 0.0)*0.05*u*u; }
+// Every feather is a function of (which feather, uv on it): u along the shaft, v across the vane (-1 leading, +1
+// trailing), and a weight. The particle pass samples them at random; the stroke pass walks them as hairlines (the rachis,
+// and every barb from the shaft out to the vane edge), so the plumage resolves as real feathers at any zoom.
 // grp 0 primaries (10 a side), 1 secondaries (11), 2 tertials (3), 3 greater coverts (16)
 vec3 wingF(float grp, float i, float side, vec3 uv, float flap, out vec4 info){
   float rising = cos(flap), spread = smoothstep(0.3, -0.9, rising);
   vec3 sh, el, wr, tp, dH; float fold; vec3 p;
-  if (grp < 0.5) {
+  if (grp < 0.5) {                                   // ten primaries splaying like fingers
     float fi = i/9.0;
-    bones(flap - 0.55*uv.x*fi - 0.2 - 0.12*uv.x*uv.x, sh, el, wr, tp, dH, fold);
+    bones(flap - 0.55*uv.x*fi - 0.2 - 0.12*uv.x*uv.x, sh, el, wr, tp, dH, fold);   // the tips lag the hand: secondary motion
     vec3 N = normalize(cross(dH, vec3(0.0, 0.0, -1.0)));
     float psi = (0.20 + (1.05 + 0.35*spread)*fi)*(1.0 - 0.5*fold);
     vec3 D = normalize(cos(psi)*vec3(0.0, 0.0, -1.0) + sin(psi)*dH);
-    float L = (0.50 + 0.46*pow(fi, 0.7))*(1.0 - 0.12*fold)*(0.95 + 0.10*fjit(i*1.7 + 0.3))*(1.0 + 0.12*uFh);
-    vec3 B = vec3(0.0, 0.0, -0.10) - N*(0.16*rising + 0.05*sin(flap - 1.6)) + N*0.03*sin(uT*8.0 + i*1.7)*uv.x;
-    p = feather(armAt(2.04 + 0.92*pow(fi, 0.9), sh, el, wr, tp), D, N, B, L, 0.13, uv);
-    p += N*(0.012*uv.y*uv.y*uv.x*sin(uT*19.0 + uv.x*11.0 + i*2.3 + uv.y*3.0));
+    float L = mix(0.50 + 0.46*pow(fi, 0.7), 0.56 + 0.58*pow(fi, 0.8), uFh)*(1.0 - 0.12*fold)*(0.95 + 0.10*fjit(i*1.7 + 0.3));   // the fenghuang's primaries run longer
+    vec3 B = vec3(0.0, 0.0, -0.10) - N*(0.16*rising + 0.05*sin(flap - 1.6)) + N*0.03*sin(uT*8.0 + i*1.7)*uv.x;   // air bends the shaft
+    p = feather(armAt(2.04 + 0.92*pow(fi, 0.9), sh, el, wr, tp), D, N, B, L, mix(0.13, 0.15, uFh), uv);
+    gSpec = 0.13 + 0.25*uv.x + 0.12*fi;                 // leading edge to trailing tips, and a step on per finger
+    p += N*(0.012*uv.y*uv.y*uv.x*sin(uT*19.0 + uv.x*11.0 + i*2.3 + uv.y*3.0));   // the vane's edge flutters in the airflow
     info = vec4(1.0, 0.5 + 0.5*uv.x, pow(uv.x, 4.0)*0.8, uv.z*rootFade(uv.x));
-    gSpec = 0.22 + 0.24*fi + 0.12*uv.x;
-  } else if (grp < 1.5) {
+  } else if (grp < 1.5) {                            // eleven secondaries along the forearm
     float fj = i/10.0;
     bones(flap - 0.35*uv.x - 0.1, sh, el, wr, tp, dH, fold);
     vec3 dF = normalize(wr - el), N = normalize(cross(dF, vec3(0.0, 0.0, -1.0)));
     float psi = 0.03 + 0.24*fj + 0.06*(fjit(i*3.1 + 2.0) - 0.5);
     vec3 D = normalize(cos(psi)*vec3(0.0, 0.0, -1.0) + sin(psi)*dF);
     vec3 B = vec3(0.0, 0.0, -0.05) - N*(0.10*rising);
-    float L = (0.40 + 0.07*sin(PI*fj) - 0.03*fj)*(0.92 + 0.16*fjit(i*2.3 + 5.1));
-    p = feather(armAt(1.0 + 0.98*fj, sh, el, wr, tp), D, N, B, L, 0.17, uv);
+    float L = (0.40 + 0.07*sin(PI*fj) - 0.03*fj)*(0.92 + 0.16*fjit(i*2.3 + 5.1))*mix(1.0, 1.22, uFh);   // broader, rounder
+    p = feather(armAt(1.0 + 0.98*fj, sh, el, wr, tp), D, N, B, L, mix(0.17, 0.19, uFh), uv);
+    gSpec = 0.11 + 0.22*uv.x + 0.04*fj;
     p += N*(0.008*uv.y*uv.y*uv.x*sin(uT*17.0 + uv.x*9.0 + i*1.9));
     info = vec4(1.0, 0.35 + 0.4*uv.x, pow(uv.x, 4.0)*0.4, uv.z*0.9*rootFade(uv.x));
-    gSpec = 0.15 + 0.10*fj + 0.10*uv.x;
-  } else if (grp < 2.5) {
+  } else if (grp < 2.5) {                            // three tertials over the body
     bones(flap - 0.2*uv.x, sh, el, wr, tp, dH, fold);
     vec3 dU = normalize(el - sh), N = normalize(cross(dU, vec3(0.0, 0.0, -1.0)));
     p = feather(armAt(0.15 + 0.35*i, sh, el, wr, tp), normalize(vec3(-0.12 - 0.05*i, 0.0, -1.0)), N, vec3(0.0, 0.0, -0.04), 0.36*(0.84 + 0.08*i + 0.10*fjit(i + 9.0)), 0.22, uv);
     info = vec4(1.0, 0.25 + 0.3*uv.x, 0.0, uv.z*0.8*rootFade(uv.x));
-    gSpec = 0.13 + 0.08*uv.x;
-  } else {
+    gSpec = 0.09 + 0.15*uv.x;
+  } else {                                           // greater coverts, a shorter row over the flight feathers
     float fm = i/15.0;
     bones(flap - 0.1*uv.x, sh, el, wr, tp, dH, fold);
     vec3 dS = fm < 0.5 ? normalize(wr - el) : dH, N = normalize(cross(dS, vec3(0.0, 0.0, -1.0)));
@@ -163,120 +200,229 @@ vec3 wingF(float grp, float i, float side, vec3 uv, float flap, out vec4 info){
     vec3 R = armAt(1.0 + fm*1.96, sh, el, wr, tp) + N*0.02;
     p = feather(R, D, N, vec3(0.0, 0.0, -0.03), 0.21*mix(0.92, 1.06, fm)*(0.82 + 0.30*fjit(i*1.9 + 3.3)), 0.32, uv);
     info = vec4(1.0, 0.3, 0.0, uv.z*0.8*rootFade(uv.x));
-    gSpec = 0.11 + 0.14*fm;
+    gSpec = 0.04 + 0.08*uv.x + 0.04*fm;
   }
   info.w *= featherFade(uv.x);
   p.x *= side; return p;
 }
+// the simulated plumes get the same 3% sagitta: an arc lifting off the chain (zero at both ends, 0.03 L at the middle),
+// toward the bird's up, so a plume at rest never reads as a straight rod
 vec3 plumeBow(vec3 T, float L, float u){ vec3 n = vec3(0.0, 1.0, 0.0) - T*T.y; float k = length(n);
   return (k > 1e-3 ? n/k : vec3(1.0, 0.0, 0.0))*(4.0*0.03*L*u*(1.0 - u)); }
-vec3 crestF(float kk, vec3 uv, out vec4 info){
-  float u = uv.x, L = 1.30*(1.0 + 0.35*uFh)*mix(0.25, 1.0, smoothstep(0.2, 0.85, uUnfurl));
-  int cb = kk < 0.0 ? 56 : 72;
-  vec3 c = chainAt(cb, 16, u*15.0), T = normalize(chainAt(cb, 16, u*15.0 + 0.06) - c + vec3(0.0, 0.0, -1e-5));
-  c += plumeBow(T, L, u);
+// the crest: in the flame life two long thin plumes arcing up and back (the simulated chains). fh3: in the fenghuang,
+// three short plumes rising up and back from the crown, each 0.35 of the neck's length (about 0.17), the outer two
+// splayed a little to the sides, every tip curling back and a little down; they sway together, never droop
+vec3 crestB(float k, float u, out vec3 T){
+  float sd = k < 0.5 ? -1.0 : (k > 3.5 ? 1.0 : 0.0), L = 0.12*mix(0.25, 1.0, smoothstep(0.2, 0.85, uUnfurl));
+  vec3 R = headPos() + vec3(sd*0.014, 0.026, -0.014);   // fh5: rooted in the skull (its top is +0.038 here), not on it
+  vec3 b1 = vec3(sd*0.08, 0.50, -0.30), b2 = vec3(sd*0.20, 0.95, -0.62), b3 = vec3(sd*0.26, 0.70, -0.98);
+  float it = 1.0 - u;
+  vec3 c = R + L*(3.0*it*it*u*b1 + 3.0*it*u*u*b2 + u*u*u*b3);
+  T = normalize(3.0*it*it*b1 + 6.0*it*u*(b2 - b1) + 3.0*u*u*(b3 - b2) + vec3(0.0, 0.0, -1e-5));
+  return c + vec3(sin(uT*2.2 + k*1.3), 0.4*sin(uT*1.7 + k), 0.0)*0.010*u*u;
+}
+vec3 crestF(float k, vec3 uv, out vec4 info){
+  float u = uv.x, L = 1.30*mix(0.25, 1.0, smoothstep(0.2, 0.85, uUnfurl));
+  float m = k/4.0, inner = step(0.5, k)*step(k, 3.5), mm = step(0.5, m);
+  vec3 c0 = chainAt(56, 16, u*15.0), c1 = chainAt(72, 16, u*15.0);
+  vec3 cA = mix(c0, c1, mm), TA = normalize(mix(chainDir(56, 16, u*15.0), chainDir(72, 16, u*15.0), mm) + vec3(0.0, 0.0, -1e-5));
+  cA += plumeBow(TA, L, u);
+  vec3 TB, cB = crestB(k, u, TB);
+  vec3 c = mix(cA, cB, uFh), T = normalize(mix(TA, TB, uFh) + vec3(0.0, 0.0, -1e-5));
   vec3 P = normalize(cross(T, vec3(0.0, 0.0, 1.0)) + vec3(0.0, 0.0, 0.2));
-  float w = 0.034*(1.0 + 0.7*uFh)*smoothstep(0.0, 0.10, u)*pow(1.0 - u, 0.9);   // PLACEHOLDER LIFE B: a fuller crest
-  info = vec4(3.0, 0.45 + 0.55*u, u*u*0.5, uv.z*1.05*barred(u, 14.0)*featherFade(u));
-  gSpec = 0.02 + 0.10*u;
+  // fh4: both lives' crests are the tail's slender plume in small: a fine vane tapering to a point, barred like the tail
+  float w = (mix(0.040, 0.022, uFh)*mix(smoothstep(0.0, 0.05, u), 0.55 + 0.45*smoothstep(0.0, 0.08, u), uFh)*pow(1.0 - u, 0.7) + 0.002)*mix(1.0, 0.85 + 0.3*sin(PI*u), uFh);   // fh5: the fenghuang's crest starts full on the head
+  float vis = mix(1.0 - inner, 1.0, uFh);
+  float tip = uFh*smoothstep(0.62, 0.92, u)*(1.0 - smoothstep(0.97, 1.0, u));   // the curled tips catch the light
+  info = vec4(3.0, 0.45 + 0.55*u, u*u*0.5 + 0.35*tip, vis*uv.z*mix(1.05, 1.0, uFh)*mix(barred(u, 22.0), 0.8 + 0.2*barred(u, 22.0), uFh)*mix(featherFade(u), 1.0, tip)*(1.0 + 0.25*tip));
+  gSpec = 0.92 + 0.22*u + 0.03*(k - 2.0); gEye = 0.0; gEdge = tip;
   return c + P*uv.y*w;
 }
-vec3 tcovF(float k, vec3 uv, out vec4 info, float flap){
+vec3 tcovF(float k, vec3 uv, out vec4 info, float flap){   // tail coverts: short and quiet, so the long plumes lead
   float spread = smoothstep(0.3, -0.9, cos(flap));
-  float kc = k - 3.0, a = kc/3.0*0.26*(0.85 + 0.3*spread)*(1.0 + 0.4*uFh);
-  float L = 0.30*(1.0 + 0.4*uFh)*mix(0.4, 1.0, smoothstep(0.2, 0.8, uUnfurl));
+  float kc = k - 3.0, a = kc/3.0*0.26*(0.85 + 0.3*spread);
+  float L = 0.30*mix(0.4, 1.0, smoothstep(0.2, 0.8, uUnfurl));
   vec3 D = normalize(vec3(sin(a), -0.06, -cos(a))), R = vec3(sin(a)*0.03, 0.02, -0.30);
   vec3 bendP = (pathAt(0.30 + L*uv.x) - vec3(0.0, 0.0, -0.30 - L*uv.x))*0.7;
   info = vec4(4.0, 0.3 + 0.4*uv.x, pow(uv.x, 4.0)*0.3, uv.z*0.6*featherFade(uv.x));
-  gSpec = 0.46 + 0.08*uv.x;
+  gSpec = 0.30 + 0.12*uv.x + 0.02*kc; gCore = 0.3*(1.0 - uv.x);
   return feather(R, D, vec3(0.0, 1.0, 0.0), vec3(0.0, -0.03, 0.0), L, 0.26, uv) + bendP;
 }
-vec3 plumeF(float kk, vec3 uv, out vec4 info){
-  float L = plumeLen(kk), u = uv.x, s = 0.30 + L*u;
-  vec3 c = spine(s, kk), T = normalize(spine(s + 0.02, kk) - c);
+// THE SIGNATURE. The flame life: two very long pheasant plumes, barred, to a fine point. fh3, the fenghuang: five
+// flowing plumes 1.6 times its body and head (about 1.8), fanned over 35 degrees between the two simulated chains (so all
+// five ride the same silk), each in a long S; the outer two are the longest and curl up at the tip (the chains' rest
+// shape carries the S and the curl, see restLocal). The outer pair and the middle one end in an eye (a small oval in
+// rings of the spectrum), the other two in flame points that waver. k 0 and 6 are the outer pair; the inner three are
+// k 1 to 3 (m 0.25, 0.5, 0.75 across the fan).
+float plumeLenK(float k){ return k < 0.5 || k > 5.5 ? 1.0 : (abs(k - 2.0) < 0.5 ? 0.76 : 0.86); }
+vec3 plumeAt(float x, float mm){ return mix(chainAt(0, 28, x), chainAt(28, 28, x), mm); }
+vec3 plumeF(float k, vec3 uv, out vec4 info){
+  float mA = k/6.0, mB = k > 5.5 ? 1.0 : k/4.0, m = mix(mA, mB, uFh);
+  float inner = step(0.5, k)*step(k, 5.5), lk = mix(1.0, plumeLenK(k), uFh), mm = mix(step(0.5, mA), mB, uFh);
+  float L = mix(mix(2.75, 2.95, mm), 1.82, uFh)*mix(0.06, 1.0, smoothstep(0.4, 1.0, uUnfurl))*lk, u = uv.x, x = u*lk*27.0;
+  float fan = 1.0 - abs(2.0*m - 1.0);
+  vec3 lift = vec3(0.0, 0.10*fan*u*u, 0.0)*uFh;
+  vec3 c = plumeAt(x, mm) + lift, T = normalize(mix(chainDir(0, 28, x), chainDir(28, 28, x), mm) + vec3(0.0, 0.20*fan*u, 0.0)*uFh*L/27.0 + vec3(0.0, 0.0, -1e-5));
   c += plumeBow(T, L, u);
   vec3 P = normalize(cross(vec3(0.0, 1.0, 0.0), T));
-  float w = (0.12*smoothstep(0.0, 0.05, u)*pow(1.0 - u, 0.7) + 0.004)*(1.0 + 0.5*uFh);   // PLACEHOLDER LIFE B: wider vanes
-  float bar = barred(u, 22.0);
-  info = vec4(5.0, 0.3 + 0.6*u, u*u*0.25 + 0.15*(1.0 - bar), uv.z*(uv.z > 0.9 ? 1.45 : 1.15)*bar*featherFade(u));
-  gSpec = 0.52 + 0.48*u;
+  vec3 Q = normalize(cross(T, P));
+  float eye = (k < 0.5 || k > 5.5 || abs(k - 2.0) < 0.5) ? 1.0 : 0.0, flame = 1.0 - eye;
+  c += (Q*0.6 + P)*(0.035*inner*pow(u, 1.5)*sin(u*6.0 - uT*1.9 + k*1.7))*uFh;            // each plume's own ripple
+  c += P*(0.022*flame*smoothstep(0.6, 1.0, u)*sin(u*24.0 - uT*6.5 + k*2.1))*uFh;          // flame points waver
+  float w0 = mix(0.12, 0.15, uFh)*smoothstep(0.0, 0.05, u)*pow(1.0 - u, 0.7) + 0.004;   // the fenghuang's vanes are fuller
+  const float UE = 0.87, RE = 0.08;
+  float ez = (u - UE)/RE, eyeK = eye*uFh;
+  float wE = 0.078*sqrt(max(1.0 - ez*ez, 0.0));
+  float w = mix(w0, w0*mix(1.0, 0.55, smoothstep(0.55, 0.78, u)), eyeK);                 // the eye plumes thin to a bare shaft
+  w = max(w, wE*eyeK);
+  w = mix(w, w*pow(max(1.0 - u, 0.0), 0.35), flame*uFh);                                  // flame plumes taper finer
+  float bar = mix(barred(u, 22.0), 0.8 + 0.2*barred(u, 22.0), uFh);
+  float ring = 1.0, er = length(vec2(ez, uv.y*w/max(wE, 1e-3)));
+  gEye = 0.0;
+  if (eyeK > 0.0 && abs(ez) < 1.0) {                                                      // the eye: core, a dark gap, a ring
+    gEye = eyeK*(er < 0.38 ? 1.0 : (er < 0.56 ? 0.0 : (er < 0.8 ? 0.5 : 0.25)));
+    ring = mix(1.0, er > 0.38 && er < 0.56 ? 0.25 : 1.3, eyeK);
+  }
+  float tipFade = 1.0 - eyeK*smoothstep(UE + RE*0.85, UE + RE*1.25, u);
+  ring *= 1.0 + 0.7*eyeK*step(abs(ez), 1.0)*exp(-er*er*6.0);                              // fh3: a soft inner glow in each eye
+  gEdge = uFh*smoothstep(0.78, 0.96, abs(uv.y))*smoothstep(0.08, 0.3, u)*(1.0 - eyeK*step(abs(ez), 1.0));   // silk edges
+  float vis = mix(1.0 - inner, 1.0, uFh);
+  info = vec4(5.0, 0.3 + 0.6*u, u*u*0.25 + 0.15*(1.0 - bar) + 0.35*flame*uFh*smoothstep(0.85, 1.0, u),
+              vis*uv.z*(uv.z > 0.9 ? 1.45 : 1.15)*bar*featherFade(u)*ring*tipFade);
+  gSpec = 0.40 + 0.62*u + (m - 0.5)*0.10;
   return c + P*uv.y*w;
 }
+// the body (r6): one tapered form, full at the breast and narrowing to 60% of the r5 width toward the tail root, so the
+// breast flows into the tail instead of ending in a round oblong. tr runs 0 at the tail root to 1 at the neck's base.
+float bodyR(float tr){ float t = clamp(tr, 0.0, 1.0);
+  return 0.115*pow(max(sin(PI*mix(0.04, 0.88, pow(t, 0.85))), 0.0), 0.75)*mix(0.6, 1.0, smoothstep(0.3, 0.8, t)); }   // the breast meets the neck at its width
+vec3 bodyS(float tr, float a){ float r = bodyR(tr); return vec3(cos(a)*r, 0.02 + sin(a)*r*0.8, mix(-0.34, 0.24, tr)); }
+// the body's contour feathers (r7: 6 rows of 24, wider vanes, barbed like the wings): offset row to row like scales, each
+// a short feather laid back along the body's surface, long enough to reach over the next row, and only those facing the
+// viewer drawn, so the torso is one stippled vane
+const float BODY_ROWS = 6.0, BODY_COLS = 24.0;
 vec3 bodyF(float row, float col, vec3 uv, out vec4 info){
-  float tr = (row + 0.5)/18.0, a = (col + 0.5 + 0.5*mod(row, 2.0))/14.0*2.0*PI;
-  float r = 0.115*pow(max(sin(PI*mix(0.04, 0.97, pow(tr, 0.85))), 0.0), 0.75);
+  float tr = 0.95 - row*0.155, a = (col + 0.5 + 0.5*mod(row, 2.0))/BODY_COLS*2.0*PI + 0.05*(fjit(row*24.0 + col) - 0.5);
   vec3 n = normalize(vec3(cos(a), sin(a)*0.8, 0.0));
-  vec3 R = vec3(cos(a)*r, 0.02 + sin(a)*r*0.8, mix(-0.34, 0.24, tr));
-  vec3 D = normalize(vec3(0.0, 0.0, -1.0) + n*0.22);
-  info = vec4(2.0, 0.05 + 0.1*uv.x, 0.1, (0.55 + 0.25*step(0.0, sin(a)))*uv.z*featherFade(uv.x));
-  gSpec = 0.06 + 0.06*(1.0 - tr);
-  return feather(R, D, n, -n*0.01, 0.075 + 0.02*sin(PI*tr), 0.62, uv);
+  vec3 R = bodyS(tr, a) + n*0.004, D = normalize(bodyS(tr - 0.03, a) - bodyS(tr, a));
+  float L = (0.23 + 0.03*fjit(row*7.0 + col*3.1))*(row > 2.5 ? 1.1 : 1.0), r = bodyR(tr - 0.15);   // each reaches well over the next row
+  info = vec4(2.0, 0.25 + 0.3*uv.x, 0.15 + 0.25*uv.x*uv.x, (0.75 + 0.25*step(0.0, sin(a)))*uv.z*mix(0.5, 1.0, rootFade(uv.x))*featherFade(uv.x)*facing(n, -D));
+  gCore = 0.9 - 0.35*uv.x; gSpec = 0.30 - 0.25*tr;
+  return feather(R, D, n, -n*0.10, L, clamp(0.5*r/L, 0.08, 0.26), uv);
 }
 vec3 neckF(float row, float col, vec3 uv, out vec4 info){
-  vec3 H = vec3(0.0, 0.135, 0.54);
+  vec3 H = headPos();
   float t = (row + 0.5)/10.0, it = 1.0 - t;
-  vec3 P0 = vec3(0.0, 0.03, 0.20), P1 = vec3(0.025, -0.06, 0.34), P2 = vec3(-0.02, 0.19, 0.37), P3 = H + vec3(0.0, -0.01, -0.03);
+  vec3 P0 = vec3(0.0, 0.03, 0.20), P1 = mix(vec3(0.025, -0.06, 0.34), vec3(0.02, -0.02, 0.37), uFh), P2 = mix(vec3(-0.02, 0.19, 0.37), vec3(-0.02, 0.36, 0.44), uFh), P3 = H + vec3(0.0, -0.01, -0.03);
   vec3 c = it*it*it*P0 + 3.0*it*it*t*P1 + 3.0*it*t*t*P2 + t*t*t*P3;
   vec3 tg = normalize(3.0*it*it*(P1 - P0) + 6.0*it*t*(P2 - P1) + 3.0*t*t*(P3 - P2));
-  float a = (col + 0.5 + 0.5*mod(row, 2.0))/10.0*2.0*PI, rr = mix(0.065, 0.038, t);
+  float a = (col + 0.5 + 0.5*mod(row, 2.0))/10.0*2.0*PI, rr = mix(mix(0.065, 0.038, t), mix(0.060, 0.030, t), uFh);
   vec3 n = normalize(vec3(cos(a), sin(a)*0.85, 0.0));
-  info = vec4(2.0, 0.05, 0.15, 0.7*uv.z*featherFade(uv.x));
-  gSpec = 0.04*(1.0 - t);
-  return feather(c + n*rr, normalize(-tg + n*0.25), n, -n*0.008, 0.06, 0.4, uv);
+  info = vec4(2.0, 0.15 + 0.2*uv.x, 0.15, 1.1*uv.z*featherFade(uv.x)*facing(n, tg));
+  gCore = mix(0.75, 0.2, t); gSpec = 0.96 + 0.12*t + 0.04*uv.x;      // the neck's hackles carry the end of the spectrum
+  return feather(c + n*rr, normalize(-tg + n*0.25), n, -n*0.008, mix(0.11, 0.12, uFh), 0.4, uv);   // r7: long enough to lap the next row
+}
+// fh4: the head as one tapered silhouette, filled through: a skull 1.6 times the beak's length (0.16 against 0.10),
+// round at the back, narrowing into the beak, which runs on from it to a fine point with a slight droop; one eye spark,
+// on the side facing the viewer
+const float HEAD_L = 0.16, BEAK_L = 0.10;
+vec3 headPt(float s, float a, float rho, out float r){
+  float z = s*(HEAD_L + BEAK_L), sb = max(z - HEAD_L, 0.0)/BEAK_L;
+  float zq = z/HEAD_L;                                 // fh5: the fenghuang's skull is domed (full to the brow, then the beak), not a cone
+  r = z < HEAD_L ? (0.017 + 0.030*mix(1.0 - zq, 1.0 - zq*zq*zq, uFh))*sqrt(smoothstep(0.0, 0.045, z)) : 0.017*(1.0 - sb);
+  vec3 ax = headPos() + vec3(0.0, 0.006 - 0.022*sb*sb, -0.075 + z);
+  return ax + vec3(cos(a)*r*rho, sin(a)*r*rho*0.9, 0.0);
+}
+// fh5: the fenghuang's head gets a drawn edge: hairlines along its profile as seen from the eye (the two sides of the
+// head of revolution whose surface turns away from the view), from the round back of the skull to the beak's point,
+// where they meet. Six close lines per side, brightest on the true edge, so the outline is crisp and the beak a fine
+// tapered point at any angle; the skull's dense sparks and mass fill it
+const float HEAD_NL = 12.0;
+vec3 headF(float f, vec3 uv, out vec4 info){
+  float sd = f < 6.0 ? 0.0 : PI, j = mod(f, 6.0), off = (j - 2.5)*0.055;
+  float a = atan(uViewL.x, -uViewL.y) + sd + off, r, s = mix(0.03, 1.0, uv.x);
+  vec3 p = headPt(s, a, 1.0, r);
+  info = vec4(2.0, 0.1 + 0.05*s, 0.35 + 0.45*smoothstep(0.55, 1.0, s), uFh*uv.z*(1.0 - 0.75*abs(j - 2.5)/2.5));
+  gCore = s > 0.615 ? 1.0 : 0.8; gSpec = 1.06; gEye = 0.0; gEdge = 0.0; gSpark = 0.0; gHead = 1.0;
+  return p;
+}
+// fh4: the torso as one solid mass of light, so the bird reads as one body at phone size: a teardrop filled through (not
+// a shell), full and round at the breast, drawn to a point at the tail root, its narrow end at the neck running into the
+// hackles. In the life's palette at about 0.8 of the wings' light (MASS_W, measured on the shots).
+const float MASS_W = 0.28;
+vec3 torsoMass(vec3 h, out vec4 info){
+  float hq = mix(0.22, 0.40, uFh);                     // fh5: the fenghuang's head takes 40% of the mass, the torso keeps its light
+  if (h.x < hq) {                                      // a fifth of the mass fills the head's silhouette, so it reads solid
+    float r, rho = pow(fract(h.z*31.7 + h.y*7.3), 0.45), s = pow(h.y, 0.85);
+    vec3 p = headPt(s, h.z*2.0*PI, rho, r);
+    info = vec4(2.0, 0.1 + 0.05*s, 0.2 + 0.3*smoothstep(0.6, 1.0, s), 0.62*clamp(r/0.03, 0.4, 1.0)*mix(1.0, 0.4, uFh));   // fh5: B's skull a dense core of light, held under white so the eye reads
+    gCore = s > 0.615 ? 1.0 : mix(0.7, 0.3, uFh); gSpec = 1.06; gEye = 0.0; gEdge = 0.0; gSpark = 0.0; gHead = 1.0;   // fh5: B's skull in colour, the beak white-gold
+    return p;
+  }
+  float t = h.y, a = h.z*2.0*PI, rho = pow(fract(h.z*53.17 + h.y*17.31), 0.4);   // rho: through the volume, a little toward the skin
+  float r = 0.112*pow(t, 0.75)*sqrt(max(1.0 - pow(t, 5.0), 0.0))*1.14 + 0.05*smoothstep(0.86, 1.0, t);   // round breast, point at the tail
+  vec3 c = vec3(0.0, 0.02 + 0.012*t, mix(-0.36, 0.27, t));
+  info = vec4(2.0, 0.5, 0.0, MASS_W*(0.75 + 0.25*rho)*mix(0.4, 1.0, smoothstep(0.3, 0.9, uUnfurl))*0.78/(1.0 - hq));   // quieter while the wings are still folded
+  gCore = 0.12; gSpec = 0.24 - 0.18*(1.0 - t); gEye = 0.0; gEdge = 0.0; gSpark = 0.0; gHead = 0.0;
+  return c + vec3(cos(a)*r*rho, sin(a)*r*rho*0.8, 0.0);
+}
+// fh4: a wisp's source, chosen by its particle (not per respawn), so the draw pass finds the same feather and its hue
+vec3 wispPt(vec2 c, float hz, out vec4 info){
+  float hx = fract(sin(dot(c + 41.7, vec2(12.9898, 78.233)))*43758.5453), hy = fract(sin(dot(c + 43.9, vec2(12.9898, 78.233)))*43758.5453);
+  if (hx < 0.55) return wingF(0.0, 7.0 + floor(hy*2.999), hx < 0.275 ? -1.0 : 1.0, vec3(0.84 + 0.16*hz, 0.0, 1.0), uFlap, info);
+  float k = uFh > 0.5 ? (hy < 0.5 ? (hy < 0.25 ? 0.0 : 6.0) : 1.0 + floor((hy - 0.5)*5.999)) : (hy < 0.5 ? 0.0 : 6.0);
+  return plumeF(k, vec3(0.78 + 0.22*hz, 0.0, 1.0), info);
 }
 vec3 birdPoint(vec3 h, float flap, out vec4 info){
-  float x = h.x; info = vec4(0.0, 0.0, 0.0, 1.0);
+  float x = h.x; info = vec4(0.0, 0.0, 0.0, 1.0); gEdge = 0.0; gHead = 0.0; gSpark = 0.0;
   if (x < 0.46) {                                      // WINGS
     float q = x/0.46; float side = q < 0.5 ? -1.0 : 1.0; q = fract(q*2.0);
     if (q < 0.50) { float qi = q/0.50*10.0; return wingF(0.0, floor(qi), side, vane(fract(qi), h.y, h.z, 16.0, 0.06), flap, info); }
     if (q < 0.80) { float qi = (q - 0.50)/0.30*11.0; return wingF(1.0, floor(qi), side, vane(fract(qi), h.y, h.z, 12.0, 0.06), flap, info); }
     if (q < 0.86) { float qi = (q - 0.80)/0.06*3.0; return wingF(2.0, floor(qi), side, vane(fract(qi), h.y, h.z, 9.0, 0.06), flap, info); }
     if (q < 0.95) { float qi = (q - 0.86)/0.09*16.0; return wingF(3.0, floor(qi), side, vane(fract(qi), h.y, h.z, 6.0, 0.08), flap, info); }
-    vec3 sh, el, wr, tp, dH; float fold;               // the leading edge: a soft band of marginal coverts
+    vec3 sh, el, wr, tp, dH; float fold;               // the leading edge: the arm and hand, lined with marginal coverts
     bones(flap, sh, el, wr, tp, dH, fold);
+    // a soft band, not a comb: spread evenly along the curved edge, densest at the edge and thinning back over the
+    // flight feathers' roots, fading out toward the wingtip
     float t = h.y*3.0, off = h.z*h.z*0.11, jt = fract(h.y*977.0 + h.z*131.0) - 0.5;
     vec3 p = armAt(t, sh, el, wr, tp) + vec3(0.0, 0.012 + 0.008*jt, 0.012 - off);
     info = vec4(1.0, 0.15 + 0.3*h.y, 0.15*h.y, (1.0 - 0.55*h.z)*(1.0 - smoothstep(2.4, 3.0, t)));
-    gSpec = 0.10 + 0.05*t;
+    gSpec = 0.02 + 0.05*h.z + 0.03*h.y;
     p.x *= side; return p;
   }
-  vec3 H = vec3(0.0, 0.135, 0.54);                     // the head
+  vec3 H = headPos();                                  // the head
   if (x < 0.56) {                                      // BODY, NECK, HEAD, BEAK
     float q = (x - 0.46)/0.10;
-    if (q < 0.50) {
-      float t = h.y*18.0, row = floor(t), tr = (row + 0.5)/18.0;
-      float ca = floor(h.z*14.0), s = fract(h.z*14.0);
-      float a = (ca + 0.5 + 0.5*mod(row, 2.0))/14.0*2.0*PI;
-      float r = 0.115*pow(max(sin(PI*mix(0.04, 0.97, pow(tr, 0.85))), 0.0), 0.75);
-      info = vec4(2.0, 0.0, 0.1, 0.55 + 0.25*step(0.0, sin(a)));
-      gSpec = 0.06 + 0.06*(1.0 - tr);
-      return vec3(cos(a)*r, 0.02 + sin(a)*r*0.8, mix(-0.34, 0.24, tr) - s*0.07);
-    } else if (q < 0.74) {
-      float t = h.y, it = 1.0 - t;
-      vec3 P0 = vec3(0.0, 0.03, 0.20), P1 = vec3(0.025, -0.06, 0.34), P2 = vec3(-0.02, 0.19, 0.37), P3 = H + vec3(0.0, -0.01, -0.03);
-      vec3 c = it*it*it*P0 + 3.0*it*it*t*P1 + 3.0*it*t*t*P2 + t*t*t*P3;
-      float a = (floor(h.z*10.0) + 0.5)/10.0*2.0*PI, s = fract(h.z*10.0);
-      float r = mix(0.065, 0.038, t);
-      info = vec4(2.0, 0.05, 0.15, 0.7);
-      gSpec = 0.04*(1.0 - t);
-      return c + vec3(cos(a)*r, sin(a)*r*0.85, -s*0.05);
-    } else if (q < 0.90) {
-      float a = h.y*2.0*PI, b = acos(2.0*h.z - 1.0);
-      vec3 n = vec3(sin(b)*cos(a), sin(b)*sin(a), cos(b));
-      gSpec = 0.0;
-      if (fract(q*40.0) < 0.12) { info = vec4(2.0, 0.1, 1.0, 1.6); return H + vec3(sign(n.x)*0.034, 0.018, 0.022) + n*0.006; }
-      info = vec4(2.0, 0.1, 0.25, 0.8);
-      return H + n*vec3(0.048, 0.044, 0.064);
+    float qT = mix(0.60, 0.54, uFh), qN = mix(0.78, 0.70, uFh);   // fh5: the fenghuang's head takes 30% of these (22%)
+    if (q < qT) {                                      // the torso's sparks ride its contour feathers, as on the wings
+      float qi = q/qT*BODY_ROWS*BODY_COLS, f = floor(qi);
+      return bodyF(floor(f/BODY_COLS), mod(f, BODY_COLS), vaneB(fract(qi), h.y, h.z, 18.0, 0.12), info);
+    } else if (q < qN) {                               // r7: the neck's sparks ride its hackles too (they were rings)
+      float qi = (q - qT)/(qN - qT)*100.0, f = floor(qi);
+      gHead = 1.0; return neckF(floor(f/10.0), mod(f, 10.0), vaneB(fract(qi), h.y, h.z, 5.0, 0.2), info);
     }
-    float t = h.y, a = h.z*2.0*PI;
-    vec3 c = H + vec3(0.0, -0.012 - 0.03*t*t, 0.055 + 0.10*t);
-    info = vec4(2.0, 0.15, 0.6, 1.1);
-    gSpec = 0.0;
-    return c + vec3(cos(a), sin(a), 0.0)*0.019*(1.0 - t);
+    gCore = mix(0.85, 0.5, uFh); gSpec = 1.06; gSpark = 0.0; gHead = 1.0;   // fh4: THE HEAD, one tapered form; and the eye's one spark (fh5: B's skull in colour, so the white-hot eye reads)
+    if (fract(q*40.0) < 0.05) {
+      float side = uViewL.x < 0.0 ? -1.0 : 1.0, r; vec3 c = headPt(0.27, 0.0, 0.0, r);
+      info = vec4(2.0, 0.1, 1.0, 1.6); gCore = 1.0; gSpark = 1.0;
+      return c + vec3(side*r*0.86, 0.36*r, 0.0);
+    }
+    float r, rho = pow(fract(h.z*31.7 + h.y*7.3), mix(0.45, 0.5, uFh));
+    vec3 p = headPt(h.y, h.z*2.0*PI, rho, r);
+    info = vec4(2.0, 0.1 + 0.05*h.y, 0.25 + 0.35*smoothstep(0.6, 1.0, h.y), 0.85*clamp(r/0.03, 0.35, 1.0)*mix(1.0, 0.8, uFh*(1.0 - step(0.615, h.y))));   // fh5: B's skull sparks denser and each a little dimmer
+    if (h.y > 0.615) gCore = 1.0;                      // the beak is the white-gold core's
+    return p;
   }
-  if (x < 0.61) { float q = (x - 0.56)/0.05*2.0; return crestF(floor(q)*2.0 - 1.0, vane(fract(q), h.y, h.z, 26.0, 0.04), info); }
+  if (x < 0.61) {                                      // crest: the outer two, and the inner three as the fenghuang grows them
+    float q = (x - 0.56)/0.05, qa = fract(q*7.31), k;
+    if (q < 1.0 - uFh*0.33) k = qa < 0.5 ? 0.0 : 4.0; else k = 2.0;   // fh3: the fenghuang's middle crest plume
+    gHead = 1.0; return crestF(k, vane(fract(q*13.0), h.y, h.z, 26.0, 0.04), info); }
   if (x < 0.65) { float qi = (x - 0.61)/0.04*7.0; return tcovF(floor(qi), vane(fract(qi), h.y, h.z, 7.0, 0.06), info, flap); }
-  if (x < 0.92) { float q = (x - 0.65)/0.27*2.0; return plumeF(floor(q)*2.0 - 1.0, vane(fract(q), h.y, h.z, 44.0, 0.035), info); }
+  if (x < 0.92) {                                      // tail: the outer pair, and the inner five as the fenghuang grows them
+    float q = (x - 0.65)/0.27, qa = fract(q*9.17), k;
+    if (q < 1.0 - uFh*0.6) k = qa < 0.5 ? 0.0 : 6.0; else k = 1.0 + floor(qa*2.999);   // fh3: three inner plumes
+    return plumeF(k, vane(fract(q*17.0), h.y, h.z, 44.0, 0.035), info); }
   // FLAME WISPS peeling off the trailing edges and the plumes
   float q = (x - 0.92)/0.08, age = fract(h.y + uT*0.55);
   vec3 o;
@@ -285,22 +431,21 @@ vec3 birdPoint(vec3 h, float flap, out vec4 info){
     float t = fract(q/0.55*2.0);
     o = armAt(1.0 + 2.0*t, sh, el, wr, tp) + dH*(0.25*t*t) + vec3(0.0, 0.0, -0.34 - 0.10*sin(PI*t) - 0.10*fjit(h.z*31.0));
     o.x *= q < 0.275 ? -1.0 : 1.0;
-    gSpec = 0.2 + 0.3*t;
   } else {
-    float kk = fract(q*7.0) < 0.5 ? -1.0 : 1.0;
-    o = spine(0.30 + plumeLen(kk)*mix(0.25, 0.9, h.z), kk);
-    gSpec = 0.6 + 0.35*h.z;
+    float kq = fract(q*7.0), mm = mix(step(0.5, kq), kq, uFh);
+    o = plumeAt(mix(0.25, 0.9, h.z)*27.0*mix(1.0, 0.8, uFh), mm);
   }
   vec3 p = o + vec3(0.0, 0.0, -0.75)*age + vec3(0.0, 0.22, 0.0)*age*age
          + vec3(sin(age*7.0 + h.z*20.0 + uT*3.0), sin(age*5.0 + h.z*13.0 + uT*2.3), 0.0)*0.07*age;
-  info = vec4(6.0, 1.0, 0.25*(1.0 - age), pow(1.0 - age, 1.6)*0.6*smoothstep(0.0, 0.15, age));
+  info = vec4(6.0, 1.0, 0.25*(1.0 - age), pow(1.0 - age, 1.6)*0.6*smoothstep(0.0, 0.15, age)); gSpec = h.z*1.1;
   return p;
 }
 `;
 
 export const BIRD_LOOK_GLSL = `
 uniform vec3 uBirth, uEye, uPoleB, uPoleD; uniform float uPullT;
-uniform float uRb, uHue0;          // PLACEHOLDER LIFE B: the spectrum's weight and its starting hue, in turns (fh1's names)
+uniform float uRb, uHue0;          // fh5: the spectrum's weight (the fenghuang's life) and its starting hue, in turns
+uniform float uNew;                // fh5: the life being born this cycle (0 the phoenix, 1 the fenghuang)
 // The spectrum in OKLCH: one lightness and chroma for every hue, so no band shouts (fh1's, kept so the swap is clean)
 vec3 oklch(float L, float C, float hh){
   float a = C*cos(hh), b = C*sin(hh);
@@ -316,9 +461,8 @@ vec3 spectral(float s){
   float yl = exp(-pow((fract(hh/6.2831853 - 0.29 + 0.5) - 0.5)*5.0, 2.0));
   return oklch(0.71 + 0.12*yl, 0.165 - 0.015*yl, hh);
 }
-// a local bird point to the world: the rebirth gathers it out of the top pole (staggered, strand by strand); the death
-// draws it along the shell into a pole (uPoleD: down for the fall, up for the close's last pass). wp: how far it is
-// gathered; ab: how far it is drawn in.
+// a local bird point to the world: the rebirth gathers it out of the top pole (staggered, strand by strand) and the
+// death draws it along the shell into the pillar's foot. wp: how far it is gathered; ab: how far it is drawn in.
 vec3 birdXf(vec3 l, vec4 info, vec3 h, float hk, out float wp, out float ab, out float vis, out float hb){
   float rank = clamp(info.y, 0.0, 1.0)*0.55 + (info.x > 4.5 ? 0.12 : 0.0);
   float g = rank*0.6 + hk*0.18; wp = smoothstep(g, g + 0.26, uForm);
@@ -328,23 +472,42 @@ vec3 birdXf(vec3 l, vec4 info, vec3 h, float hk, out float wp, out float ab, out
   w += (normalize(h - 0.5 + 1e-4)*1.2*h.z + uU*0.35 - uF*0.35)*hb*(0.12 + 0.4*bp);
   ab = 0.0; vis = 1.0;
   if (uPullT > 0.0) {
-    vec3 dn = uPoleD;
-    float fk = 2.0 - min(length(w - uPoleB)/1.6, 1.0);
-    float lin = pow(clamp(uPullT/0.6, 0.0, 1.0), 1.0/fk); ab = lin*lin*(3.0 - 2.0*lin);
+    vec3 dn = uPoleD;   // the landing: down for the fall, up for the close's last pass
+    // fh5: drawn in, head first: each point starts its pull by where it sits along the body (0 at the beak, 1 at the
+    // tail's tips), so the head goes in at pullT 0.4 and the last fifth of the body streams down the shell into the pole
+    // after it, accelerating as it goes (an ease-in), and is gone only at the pole's mouth, never faded on the way
+    float ord = clamp((0.75 - l.z)/2.6, 0.0, 1.0), pk = clamp((uPullT - 0.5*ord)/0.45, 0.0, 1.0);
+    ab = pk*pk*(1.6 - 0.6*pk);
     float r = length(w); vec3 nn = w/max(r, 1e-4);
     float th = acos(clamp(dot(nn, dn), -1.0, 1.0));
     vec3 tg = nn - dn*dot(nn, dn); float tl = length(tg); tg = tl > 1e-4 ? tg/tl : vec3(0.0, 0.0, 1.0);
     float th2 = th*(1.0 - ab);
-    w = (dn*cos(th2) + tg*sin(th2))*mix(r, 1.63, smoothstep(0.0, 0.4, ab)) + normalize(h - 0.5 + 1e-4)*pow(h.z, 0.6)*mix(0.03, 0.075, ab*ab);
-    float fo = clamp((uPullT - 0.6)/0.4, 0.0, 1.0); vis = 1.0 - fo*fo;
+    w = (dn*cos(th2) + tg*sin(th2))*mix(r, 1.63, smoothstep(0.0, 0.4, ab)) + normalize(h - 0.5 + 1e-4)*pow(h.z, 0.6)*mix(0.03, 0.075, ab*ab);   // a small round hot knot at the foot
+    w *= mix(1.0, min(1.0, 1.6/max(length(w), 1e-4)), smoothstep(0.0, 0.3, ab));   // r6: the knot is light on the shell, never a bump past it (B44)
+    vis = 1.0 - smoothstep(0.86, 1.0, ab);
   }
-  return mix(uBirth + normalize(h - 0.5 + 1e-4)*0.06*sqrt(h.z), w, wp);
+  // fh3: the two births differ. The phoenix gathers as a tongue of flame licking up off the crown; the fenghuang
+  // gathers out of a slow ring of light turning round the crown, so its feathers spiral in to their places
+  vec3 bo = normalize(h - 0.5 + 1e-4)*0.06*sqrt(h.z);
+  vec3 bA = vec3(bo.x*0.6, abs(bo.y)*3.2 + 0.05*h.z, bo.z*0.6);
+  float ang = h.x*6.2831853 + uT*1.4;
+  vec3 rn = normalize(mix(vec3(0.0, 1.0, 0.0), normalize(uEye - uBirth), 0.7));   // fh4: the ring's plane tilted to face the eye
+  vec3 re1 = normalize(cross(rn, abs(rn.x) < 0.9 ? vec3(1.0, 0.0, 0.0) : vec3(0.0, 0.0, 1.0))), re2 = cross(rn, re1);
+  vec3 bB = (re1*cos(ang) + re2*sin(ang) + rn*0.25*(h.y - 0.5))*0.22*(0.6 + 0.4*h.z);
+  return mix(uBirth + mix(bA, bB, uNew), w, wp);
 }
-// the bird's colour. Life A: the flame ramp runs root to tip along each feather (tips a step further on). Life B
-// (PLACEHOLDER): the whole spectrum at once across the plumage (gSpec), with a white-gold core where it is hottest.
-vec3 birdCol(vec4 info, float wp, float ab, float hb, float hk, float hueOff, float spec){
-  vec3 col = flame(clamp(uTau*0.88 + info.y*0.13 + hueOff, 0.0, 0.745));
-  if (uRb > 0.0) col = mix(col, spectral(spec + hueOff*3.0), uRb);
+// the bird's colour: the loop's palette runs root to tip along each feather (tips a step further on), shifted by hue
+vec3 birdHue(vec4 info, float hueOff){
+  return flame(clamp(uTau*0.88 + info.y*0.13 + hueOff, 0.0, 0.745));
+}
+vec3 birdCol(vec4 info, float wp, float ab, float hb, float hk, float hueOff, float spec, float core, float eye){
+  vec3 col = birdHue(info, hueOff);
+  if (uRb > 0.0) {                                     // the fenghuang: the whole spectrum at once, a white-gold core
+    vec3 rc = spectral(spec + hueOff*3.0 + 0.5*eye*step(0.75, eye) + 0.25*eye*step(0.4, eye)*step(eye, 0.6));
+    rc = mix(rc, uHot, core*0.8);
+    rc = mix(rc, uHot, 0.45*step(0.99, eye));         // fh3: each eye's core glows white-gold
+    col = mix(col, rc, uRb);
+  }
   col = mix(col, uHot, clamp(info.z, 0.0, 1.0)*mix(0.5, 0.22, uRb));
   col = mix(col, mix(uFl[3], uHot, 0.35 + 0.4*info.y), hb*0.85);
   col = mix(mix(uInk, uInk2, hk), col, smoothstep(0.0, 0.7, wp)*0.85);
@@ -378,22 +541,25 @@ void birdFieldTouch(vec4 s, inout vec4 col, inout float size){
   col = vec4(mix(col.rgb, uPulseC, min(pk*0.6, 1.0)), col.a + pk*0.25); size *= 1.0 + 0.3*pk;
 }
 // the sparks: fine glints along every feather (the hairlines carry the form; see BIRD_STROKE_VS)
-void birdVertex(ivec2 c, vec4 s){
+void birdVertex(ivec2 c, vec4 s){   // fh5's bird pass (its sparkle along the silk, the eye's one spark), less its mass pass
   vec3 h = birdHash(vec2(c) + uRep*vec2(613.37, 271.91));
-  vec4 info; vec3 l = birdPoint(h, uFlap, info); float spec = gSpec;
+  vec4 info; vec3 l = birdPoint(h, uFlap, info); float spec = gSpec, core = gCore, eye = gEye, edg = gEdge, spk = gSpark;
   float fl = sin(uT*9.0 + h.z*40.0)*0.5 + 0.5;
   l += vec3(sin(uT*5.5 + h.x*50.0), sin(uT*6.5 + h.y*60.0), sin(uT*4.5 + h.z*70.0)) * (0.001 + 0.006*fl*info.y*info.y);
   float hk = hash(vec2(c) + 42.1), wp, ab, vis, hb;
   vec3 w = birdXf(l, info, h, hk, wp, ab, vis, hb);
   vec4 cq = uVP*vec4(w, 1.0); gl_Position = cq;
   float dep = depthOf(cq);
-  vec3 col = birdCol(info, wp, ab, hb, hash(vec2(c) + 2.2), (hk - 0.5)*0.05, spec);
+  vec3 col = birdCol(info, wp, ab, hb, hash(vec2(c) + 2.2), (hk - 0.5)*0.05, spec, core, eye);
   float a = dep*(0.72 + 0.28*fl)*info.w*uFireA*(1.0 - 0.45*hb)*vis*(1.0 + 0.25*step(0.6, uTau));
   vCol = vec4(col, a*wp*(0.35 + 0.65*wp)*uBirdA);
   vCol.a = max(vCol.a, 0.07*(1.0 - wp)*(1.0 - uForm)*info.w*uFireA*dep*step(uAbsorb, 0.0));
   vCol.a *= birdOcc(w, ab);
+  { float tw = pow(0.5 + 0.5*sin(uT*5.3 + h.z*157.0 + h.y*41.0), 12.0)*edg*uRb;
+    vCol.rgb = mix(vCol.rgb, uHot, 0.55*tw); vCol.a *= 1.0 + 2.4*tw; }
   float zr = zoomRaw(cq), ps = uPx*(1.1 + 0.45*fl*info.y + 0.5*info.z)*(0.8 + 0.5*dep)*zoomOf(cq)*mix(1.0, 0.7, smoothstep(1.2, 3.0, zr));
   vCol.a *= min(zoomGain(cq), 1.25)*min(1.0, ps*ps);
+  if (spk > 0.5) { ps = 2.0*uPx/1.15*mix(min(zoomOf(cq), 1.0), 1.0, uFh); vCol.a *= mix(0.35, 3.0, uFh); vCol.rgb = mix(vCol.rgb, vec3(1.0, 0.985, 0.95), uFh); }
   gl_PointSize = max(ps, 1.0);
 }
 `;
@@ -404,24 +570,25 @@ void birdVertex(ivec2 c, vec4 s){
 // that it dims instead. Barbs carry an anisotropic sheen so the vane shimmers as it turns.
 export const BIRD_STROKE_VS = `#version 300 es
 precision highp float;
-uniform float uGrp, uNF, uNb, uSR, uSB, uSlant, uWR, uWB, uStrA, uFpx, uRachA;
+uniform float uGrp, uNF, uNb, uSR, uSB, uSlant, uWR, uWB, uStrA, uFpx, uRachA, uFOff, uHeadG;
 uniform vec2 uVpx;
 ${BIRD_ENGINE_DECL}
 ${BIRD_HELPERS_GLSL}
 ${BIRD_GLSL}
 ${BIRD_LOOK_GLSL}
-out vec4 vCol; out float vD; out float vHw;
+out vec4 vCol; out float vD; out float vHw; float vFlag;
 vec3 partPt(float f, vec3 uv, out vec4 info){
   if (uGrp < 3.5) { float side = f < uNF ? -1.0 : 1.0; return wingF(uGrp, mod(f, uNF), side, uv, uFlap, info); }
-  if (uGrp < 4.5) return crestF(f*2.0 - 1.0, uv, info);
+  if (uGrp < 4.5) return crestF(f < 0.5 ? 0.0 : (f < 1.5 ? 4.0 : 2.0), uv, info);   // the outer pair first, then the fenghuang's middle
   if (uGrp < 5.5) return tcovF(f, uv, info, uFlap);
-  if (uGrp < 6.5) return plumeF(f*2.0 - 1.0, uv, info);
-  if (uGrp < 7.5) return bodyF(floor(f/14.0), mod(f, 14.0), uv, info);
+  if (uGrp < 6.5) return plumeF(f < 0.5 ? 0.0 : (f < 1.5 ? 6.0 : f - 1.0), uv, info);
+  if (uGrp < 7.5) return bodyF(floor(f/BODY_COLS), mod(f, BODY_COLS), uv, info);
+  if (uGrp > 8.5) return headF(f, uv, info);                 // fh5: the head's line-work
   return neckF(floor(f/10.0), mod(f, 10.0), uv, info);
 }
 void main(){
   float id = float(gl_InstanceID), E = uSR + uNb*2.0*uSB;
-  float f = floor(id/E), e = id - f*E;
+  float f = floor(id/E), e = id - f*E; f += uFOff;   // fh: a group may start part-way through its feathers
   vec3 uv0, uv1; float barb = 0.0, bi = 0.0, s1 = 0.0;
   if (e < uSR) { uv0 = vec3(e/uSR, 0.0, 1.0); uv1 = vec3((e + 1.0)/uSR, 0.0, 1.0); }
   else {
@@ -431,18 +598,24 @@ void main(){
     uv0 = vec3(min(u0 + sl*s0 - 0.01*s0*s0, 1.0), side*s0, 0.5); uv1 = vec3(min(u0 + sl*s1 - 0.01*s1*s1, 1.0), side*s1, 0.5);
     barb = 1.0; bi = b;
   }
-  vec4 i0, i1; vec3 l0 = partPt(f, uv0, i0); float spec = gSpec; vec3 l1 = partPt(f, uv1, i1);
+  // fh4: a body feather turned away is skipped before any of its geometry is built (about half of them)
+  if (uGrp > 6.5 && uGrp < 7.5) { float fr = floor(f/BODY_COLS), fc = mod(f, BODY_COLS), tr = 0.95 - fr*0.155;
+    float a = (fc + 0.5 + 0.5*mod(fr, 2.0))/BODY_COLS*2.0*PI + 0.05*(fjit(fr*24.0 + fc) - 0.5);
+    if (facing(normalize(vec3(cos(a), sin(a)*0.8, 0.0)), -normalize(bodyS(tr - 0.03, a) - bodyS(tr, a))) <= 0.0) {
+      gl_Position = vec4(2.0, 2.0, 2.0, 1.0); vCol = vec4(0.0); vD = 0.0; vHw = 0.0; vFlag = 0.0; return; } }
+  vec4 i0, i1; vec3 l0 = partPt(f, uv0, i0); float sp0 = gSpec, co0 = gCore, ey0 = gEye; vec3 l1 = partPt(f, uv1, i1); vFlag = uHeadG;
+  if (i0.w <= 0.0 && i1.w <= 0.0) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); vCol = vec4(0.0); vD = 0.0; vHw = 0.0; return; }   // r7: a feather turned away draws nothing
   float hk = hash(vec2(f + uGrp*31.0, bi + uRep*7.0) + 0.37);
   vec3 h = vec3(hash(vec2(f, uGrp) + 0.11), hash(vec2(f, bi) + 7.31), hash(vec2(bi, uGrp) + 3.77));
   float wp, ab, vis, hb, wp1, ab1, vis1, hb1;
   vec3 w0 = birdXf(l0, i0, h, hk, wp, ab, vis, hb), w1 = birdXf(l1, i1, h, hk, wp1, ab1, vis1, hb1);
   vec4 c0 = uVP*vec4(w0, 1.0), c1 = uVP*vec4(w1, 1.0);
   int k = gl_VertexID;
-  if (c0.w < 0.05 || c1.w < 0.05 || wp < 0.02 || uBirdK < 0.003) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); vCol = vec4(0.0); vD = 0.0; vHw = 0.0; return; }
+  if (c0.w < 0.05 || c1.w < 0.05 || wp < 0.02) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); vCol = vec4(0.0); vD = 0.0; vHw = 0.0; return; }
   vec2 p0 = c0.xy/c0.w*0.5*uVpx, p1 = c1.xy/c1.w*0.5*uVpx, d = p1 - p0; float dl = length(d);
   vec2 dir = dl > 1e-4 ? d/dl : vec2(1.0, 0.0), nrm = vec2(-dir.y, dir.x);
   float uE = k < 2 ? uv0.x : uv1.x;
-  float taper = barb > 0.5 ? (1.0 - 0.6*s1) : (1.0 - 0.8*uE);
+  float taper = barb > 0.5 ? (1.0 - 0.6*s1) : (1.0 - 0.8*uE);              // the shaft: 100% at the root, 20% at the tip
   float wW = (barb > 0.5 ? uWB : uWR)*uScale*taper;
   float wpx = wW*uFpx/(k < 2 ? c0.w : c1.w);
   float hw = max(wpx, 1.0)*0.5, pad = hw + 1.0;
@@ -450,15 +623,20 @@ void main(){
   vec4 cc = k < 2 ? c0 : c1;
   gl_Position = vec4(P/(0.5*uVpx)*cc.w, cc.z, cc.w);
   vD = (k & 1) == 0 ? -pad : pad; vHw = hw;
+  // colour and light
   vec4 info = i0; vec3 wm = 0.5*(w0 + w1);
   vec3 T = normalize(w1 - w0 + 1e-6), V = normalize(uEye - wm), L = normalize(-wm + vec3(0.0, 0.4, 0.0));
   float TH = dot(T, normalize(L + V)), sheen = pow(sqrt(max(1.0 - TH*TH, 0.0)), 40.0);
-  float irid = barb*0.05*dot(T, V);
-  vec3 col = birdCol(info, wp, ab, hb, hk, irid + (hk - 0.5)*0.03, spec);
+  float tv = dot(T, V);
+  // iridescence: the barbs' hue turns with the view. fh3: in the fenghuang a thin film, twice the turn, and it also
+  // shifts with the wingbeat, so colour slides across the vanes as they flex
+  float irid = barb*(mix(0.05, 0.10, uRb)*tv + uRb*0.03*sin(uFlap + bi*0.37 + f*1.3));
+  vec3 col = birdCol(info, wp, ab, hb, hk, irid + (hk - 0.5)*0.03, sp0, co0, ey0);
   col = mix(col, uHot, barb*sheen*0.35);
-  float glint = barb > 0.5 ? 0.75 + 0.25*sin(uT*2.3 + bi*1.7 + f*3.1) : 1.0;
+  if (uRb > 0.0) col = mix(col, spectral(sp0 + 0.32 + 0.30*tv + 0.06*sin(uFlap)), barb*min(sheen*1.6, 1.0)*0.45*uRb);   // fh3: the film's highlight, a colour of its own
+  float glint = barb > 0.5 ? 0.75 + 0.25*sin(uT*2.3 + bi*1.7 + f*3.1) : 1.0;   // barbules catching the light, slowly
   float a = uStrA*(k < 2 ? i0.w : i1.w)*uFireA*vis*wp*(0.35 + 0.65*wp)*birdOcc(wm, ab)*depthOf(cc)*(barb > 0.5 ? (0.9 + 1.6*sheen)*glint*(0.55 + 0.45*s1) : 0.85*uRachA);
-  a *= min(1.0, wpx)*uBirdK;
+  a *= min(1.0, wpx)*uBirdK;                                               // thinner than a pixel: dimmer, never aliased
   vCol = vec4(col, a);
 }`;
 export const BIRD_STROKE_FS = `#version 300 es
@@ -468,15 +646,17 @@ void main(){ float cov = clamp(vHw + 0.5 - abs(vD), 0.0, 1.0); o = vec4(vCol.rgb
 // The plumage strokes (r5): per group, the feathers it draws (both sides), the rachis segments, barbs per side of the
 // vane and the segments of each barb, the barb slant toward the tip, and the rachis and barb widths in bird units.
 export const STROKES = [
-  { grp: 0, nf: 10, count: 20, nb: 30, sr: 18, sb: 3, slant: 0.10, wr: 0.0045, wb: 0.0026, ra: 0.75 },   // primaries
-  { grp: 1, nf: 11, count: 22, nb: 22, sr: 12, sb: 2, slant: 0.10, wr: 0.004, wb: 0.0024, ra: 0.75 },    // secondaries
-  { grp: 2, nf: 3, count: 6, nb: 16, sr: 10, sb: 2, slant: 0.10, wr: 0.006, wb: 0.002 },                // tertials
-  { grp: 3, nf: 16, count: 32, nb: 8, sr: 6, sb: 2, slant: 0.14, wr: 0.005, wb: 0.002 },                // greater coverts
-  { grp: 4, nf: 2, count: 2, nb: 44, sr: 36, sb: 2, slant: 0.05, wr: 0.006, wb: 0.0018 },               // the crest plumes
-  { grp: 5, nf: 7, count: 7, nb: 12, sr: 8, sb: 2, slant: 0.10, wr: 0.005, wb: 0.002 },                 // tail coverts
-  { grp: 6, nf: 2, count: 2, nb: 110, sr: 72, sb: 3, slant: 0.035, wr: 0.006, wb: 0.0024 },             // the two long plumes
-  { grp: 7, nf: 14, count: 252, nb: 7, sr: 3, sb: 1, slant: 0.16, wr: 0.003, wb: 0.0018, ra: 0.3 },      // body contour feathers
-  { grp: 8, nf: 10, count: 100, nb: 5, sr: 3, sb: 1, slant: 0.2, wr: 0.0028, wb: 0.0016, ra: 0.3 },      // neck hackles
+  { grp: 0, nf: 10, count: 20, nb: 30, sr: 18, sb: 3, slant: 0.10, wr: 0.0045, wb: 0.0026 , ra: 0.75 },   // primaries
+  { grp: 1, nf: 11, count: 22, nb: 22, sr: 12, sb: 2, slant: 0.10, wr: 0.004, wb: 0.0024 , ra: 0.75 },   // secondaries
+  { grp: 2, nf: 3, count: 6, nb: 16, sr: 10, sb: 2, slant: 0.10, wr: 0.006, wb: 0.002 },       // tertials
+  { grp: 3, nf: 16, count: 32, nb: 8, sr: 6, sb: 2, slant: 0.14, wr: 0.005, wb: 0.002 },       // greater coverts
+  { grp: 4, nf: 3, count: 3, outer: 2, nb: 44, sr: 36, sb: 2, slant: 0.05, wr: 0.006, wb: 0.0018 },      // the crest plumes (two, or three)
+  { grp: 5, nf: 7, count: 7, nb: 12, sr: 8, sb: 2, slant: 0.10, wr: 0.005, wb: 0.002 },        // tail coverts
+  { grp: 6, nf: 7, count: 2, nb: 110, sr: 72, sb: 3, slant: 0.035, wr: 0.006, wb: 0.0024 },    // the two outer long plumes
+  { grp: 6, nf: 7, count: 3, foff: 2, fh: true, nb: 60, sr: 48, sb: 2, slant: 0.04, wr: 0.0055, wb: 0.0024 },   // the fenghuang's inner three, lighter
+  { grp: 7, nf: 24, count: 144, nb: 10, sr: 6, sb: 2, slant: 0.12, wr: 0.003, wb: 0.0024, ra: 0.45 },   // body contour feathers: 6 rows of 24 (r7)
+  { grp: 8, nf: 10, count: 100, nb: 8, sr: 4, sb: 1, slant: 0.2, wr: 0.0028, wb: 0.0018, ra: 0.3 },      // neck hackles (r7: longer, more barbs)
+  { grp: 9, nf: 12, count: 12, fh: true, nb: 0, sr: 28, sb: 1, slant: 0, wr: 0.0014, wb: 0.001, ra: 0.7 },   // fh5: the fenghuang's head and beak, outlined
 ];
 
 // ---------- the bird's lap, timing and plumes, in JS ----------
@@ -489,7 +669,7 @@ const smooth = (a, b, x) => { const t = clamp((x - a)/(b - a), 0, 1); return t*t
 const lerp3 = (a, b, t) => [a[0] + (b[0] - a[0])*t, a[1] + (b[1] - a[1])*t, a[2] + (b[2] - a[2])*t];
 
 export const BIRD = {
-  name: 'the r5 phoenix (life A) and the PLACEHOLDER fenghuang (life B)',
+  name: 'the fh5 phoenix (life A) and fenghuang (life B)',
   share: 4,          // the point pass draws one texel in four (classes 4 and 6)
   emberAlpha: 0.35,
   sparkA: 2.0, strokeA: 2.6,
@@ -505,7 +685,7 @@ export const FLAME = {
   hot: [1.00, 0.90, 0.65],
   alpha: 0.65,
 };
-// PLACEHOLDER LIFE B: the spectrum starts at this hue (turns); its white-gold core
+// life B: the spectrum starts at this hue (turns); its white-gold core
 const HUE0 = 0.02, WHITE_GOLD = [1.0, 0.94, 0.80];
 
 function createRig({ phone, period, homeDir }) {
@@ -590,7 +770,7 @@ function createRig({ phone, period, homeDir }) {
   // The two lives (M27): even loops are life A, odd loops life B. A new life's form and colour turn over while it
   // unfolds (tau 0 to 0.24), out of sight inside the gather; the very first life (loop 0 and before) is A from the start.
   function lifeOf(T){
-    const loop = Math.floor(T/period), tau = T/period - loop, isB = ((loop % 2) + 2) % 2 === 1, k = smooth(0.0, 0.24, tau);
+    const loop = Math.floor(T/period), tau = T/period - loop, isB = ((loop % 2) + 2) % 2 === 1, k = smooth(0.0, 0.14, tau);   // v3-precision: turned over by tau 0.14 (was 0.24), so the fenghuang is whole while it is still above the top pole
     return isB ? k : (loop <= 0 ? 0 : 1 - k);
   }
   function at(T, phase = null){
@@ -628,23 +808,30 @@ function createRig({ phone, period, homeDir }) {
     const over = sv - 7*PATH_STEP; if (over > 0) { const e = norm(sub(P(7), P(6))); return add(P(7), scl(e, over)); }
     return o;
   }
-  // PLACEHOLDER LIFE B: plumes 30% longer and fanned wider, a crest that stands taller (matches BIRD_GLSL)
-  function plumeLenJS(kk, unfurl, fh){ return (kk > 0 ? 2.95 : 2.75)*(1 + 0.30*fh)*(0.06 + 0.94*smooth(0.4, 1.0, unfurl)); }
-  function restLocal(ch, j, b){
-    const u = j/(ch.n - 1), kk = ch.kk, T = b.T, fh = b.life || 0;
+  const LEN_B = 1.82;   // fh5: the fenghuang's tail, 1.6 times its body and head
+  function plumeLenJS(kk, unfurl, fh){ return ((kk > 0 ? 2.95 : 2.75)*(1 - fh) + LEN_B*fh)*(0.06 + 0.94*smooth(0.4, 1.0, unfurl)); }
+  function restLocal(ch, j, b){                        // the chain's rest shape, in the bird's frame
+    const u = j/(ch.n - 1), kk = ch.kk, T = b.T;
     if (ch.crest) {
-      const H = [0, 0.135, 0.54], L = 1.30*(1 + 0.35*fh)*(0.25 + 0.75*smooth(0.2, 0.85, b.unfurl)), R = add(H, [kk*0.022, 0.040, -0.020]);
-      const P1 = add(R, scl([kk*0.05, 0.60 + 0.15*fh, 0.02], L)), P2 = add(R, scl([kk*(0.16 + 0.10*fh), 0.50 + 0.25*fh, -1.00 + 0.15*fh], L));
+      const fh = b.life || 0, H = lerp3([0, 0.135, 0.54], [0, 0.33, 0.585], fh), L = 1.30*(1 - 0.5*fh)*(0.25 + 0.75*smooth(0.2, 0.85, b.unfurl)), R = add(H, [kk*0.022, 0.040, -0.020]);
+      const P1 = add(R, scl([kk*0.05, 0.60, 0.02], L)), P2 = add(R, scl([kk*(0.16 + 0.10*fh), 0.50 + 0.25*fh, -1.00 + 0.15*fh], L));   // the fenghuang's crest stands higher
       const c = add(add(scl(R, (1 - u)*(1 - u)), scl(P1, 2*(1 - u)*u)), scl(P2, u*u));
       c[0] += kk*0.035*Math.sin(Math.PI*u*2);
       c[0] += Math.sin(u*4 - T*2.6 + kk*1.3)*0.025*u*u; c[1] += 0.6*Math.sin(u*3.2 - T*2.1 + kk)*0.025*u*u;
       return c;
     }
-    const L = plumeLenJS(kk, b.unfurl, fh), sv = 0.3 + L*u, uu = clamp((sv - 0.3)/2.9, 0, 1);
+    const fh = b.life || 0, L = plumeLenJS(kk, b.unfurl, fh), sv = 0.3 + L*u, uu = clamp((sv - 0.3)/2.9, 0, 1);
     const pa = pathAtJS(b.path, sv), p = add(scl([0, 0, -sv], 1 - PLUME_PATH), scl(pa, PLUME_PATH));
-    p[0] += kk*(0.05 + (0.34 + 0.16*fh)*uu*uu) + 0.10*kk*Math.sin(Math.PI*uu*1.6);
-    p[1] += 0.10*Math.sin(Math.PI*uu*1.2) - 0.06*uu;
-    const wv = 0.07*Math.pow(uu, 1.4);
+    // life A: two long plumes trailing the path, swept a little to each side
+    const xA = kk*(0.05 + 0.34*uu*uu) + 0.10*kk*Math.sin(Math.PI*uu*1.6), yA = 0.10*Math.sin(Math.PI*uu*1.2) - 0.06*uu;
+    // fh3, life B: the outer pair of a 35 degree fan (17.5 each side), each in a long S (one full wave across, a softer
+    // one up and down), its last third curling up and over toward the head
+    const fan = Math.tan(17.5*Math.PI/180)*L*u, cu = smooth(0.62, 1.0, u);
+    const xB = kk*(0.04 + fan + 0.11*L*Math.sin(2*Math.PI*u)*(1 - 0.4*cu));
+    const yB = 0.09*L*Math.sin(2*Math.PI*u + 0.5) - 0.03*L*u + 0.34*L*cu*cu;
+    const zB = 0.16*L*cu*cu*cu;
+    p[0] += xA*(1 - fh) + xB*fh; p[1] += yA*(1 - fh) + yB*fh; p[2] += zB*fh;
+    const wv = 0.07*Math.pow(uu, 1.4)*(1 - 0.5*fh);    // half the old travelling wave: the rest of the ripple is the physics
     p[0] += Math.sin(2.3*sv - 1.7*T + kk*1.4)*wv; p[1] += 0.6*Math.sin(1.9*sv - 1.3*T + kk*0.7)*wv;
     return p;
   }
@@ -737,6 +924,8 @@ function createRig({ phone, period, homeDir }) {
     set1('uAmp', b.amp); set1('uTuck', b.tuck);
     set3('uBirth', POLE_T); set3('uEye', eye); set1('uPullT', b.pullT); set3('uPoleD', b.poleD); set3('uPoleB', scl(b.poleD, 1.62));
     set1('uFh', b.life || 0); set1('uRb', b.life || 0); set1('uHue0', HUE0);
+    set1('uNew', ((Math.floor(b.T/period) % 2) + 2) % 2);
+    { const v = norm(sub(eye, b.C)); set3('uViewL', [dot(v, b.S), dot(v, b.U), dot(v, b.F)]); }
     set1('uPulseY', b.pulseY); set1('uPulseA', b.pulseA);
     // the crown's light runs up the pillar in the next life's colour
     set3('uPulseC', lerp3(f[3], b.nextB ? WHITE_GOLD : f[0], b.pp));
