@@ -1,0 +1,398 @@
+/* HEY HEY LABS landing, round 6 (Thu 8 Oct 2026): two designed themes, three colour schemes for review, one type scale,
+   one 12-column grid. Seven scenes; the sphere is on every screen (B52) and the spine, the mark's thin line, runs the
+   page (M19, M23, M24). Buttons are monochrome (B51).
+
+   Themes (U30): dark is the Graphite ground with the plasma sphere; light is the Alloy ground with the sphere drawn as
+   fine Graphite ink and a soft cool halo (hero.js, uDay). [data-theme] is set before first paint by the inline head
+   script; without JavaScript the system setting picks.
+   Schemes (Tim picks, brands/hhl section 4): mono "Graphite" (no colour at all), plasma "Plasma" (the sphere's
+   blue-white is the only colour, the default), coral "Coral" (B30's coral as the one signal: the spine and the pillar).
+   Type: Funnel Display 400 for display and the wordmark, 500 for small heads; Funnel Sans for text (?text=geist to
+   compare); Martian Mono only for the three proof figures. Scale (brands/hhl section 5): 14, 17, 20, 26, 34, 48, 64
+   (16 for phone body). Space (the brand's scale): 4, 8, 16, 24, 40, 64, 104, 160. Radius 2 px; the toggle is round. */
+
+:root {
+  /* dark, the default */
+  --ground: #15171A;       /* Graphite */
+  --raised: #1D2024;
+  --ink: #F3F2F0;          /* 16.1:1 on Graphite */
+  --ink-2: #CFD0D2;        /* reading text: 11.6:1 */
+  --steel: #9BA1A8;        /* quiet labels and sources: 6.9:1 */
+  --rule: #2E3237;         /* hairlines only */
+  --btn: #F3F2F0; --on-btn: #15171A;          /* primary: 16.1:1 */
+  --btn-hover: #FFFFFF; --btn-press: #DADBDD;
+  --quiet-line: rgba(243, 242, 240, 0.42);    /* the quiet button's outline, 4.3:1 on Graphite */
+  --quiet-line-hi: rgba(243, 242, 240, 0.7);
+  --veil: rgba(21, 23, 26, 0.62);
+  --wash: rgba(243, 242, 240, 0.08);          /* the toggle's hover */
+  --wash-2: rgba(243, 242, 240, 0.14);
+  --focus: #F3F2F0;
+  /* the spine (SVG over the canvas): every stroke at or under the sphere's peak, blended so it never adds light */
+  --sp: #C9CBCE; --sp-spark: #C9C2B8; --sp-glow: #8F9BD0; --sp-blend: lighten;
+  color-scheme: dark;
+
+  --m: 40px;               /* phone: the text column's left edge (the spine's rail is at 16) */
+  --mr: 24px;              /* phone: the right margin */
+  --gut: 16px;
+  --rail: 16px;
+  --head: 72px;
+  --safe-br: 72px;         /* the bottom-right corner stays clear: the published site's Back bar */
+  --gap: 104px;
+
+  --display: "Funnel Display", "Funnel Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --sans: "Funnel Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Martian Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --s1: 4px; --s2: 8px; --s3: 16px; --s4: 24px; --s5: 40px; --s6: 64px; --s7: 104px; --s8: 160px;
+  /* the mark, the thin spine (t01, B57): ONE file reference; page.js reads it here for the particle targets too */
+  --mark-src: url("mark.svg");
+  --fade: 300ms;
+}
+/* the schemes in dark */
+[data-scheme="plasma"] { --btn-hover: #E3E8FF; --btn-press: #CDD5FA; --focus: #E3E8FF; --sp: #C3CBEA; --sp-spark: #DCE2FA; }
+[data-scheme="coral"] { --sp: #FFABA5; --sp-spark: #FFC9C2; --sp-glow: #FFABA5; }
+
+/* light: Alloy ground, Graphite ink, the sphere as ink lines */
+:root[data-theme="light"] {
+  --ground: #EBEDEC;       /* Alloy */
+  --raised: #F6F7F6;       /* Paper */
+  --ink: #15171A;          /* 15.3:1 on Alloy */
+  --ink-2: #33373C;        /* reading text: 10.2:1 */
+  --steel: #5A5F66;        /* 5.5:1 */
+  --rule: #CDD0CF;
+  --btn: #15171A; --on-btn: #F6F7F6;          /* 16.7:1 */
+  --btn-hover: #2E3237; --btn-press: #3A3F45;
+  --quiet-line: rgba(21, 23, 26, 0.5);        /* 3.2:1 on Alloy */
+  --quiet-line-hi: rgba(21, 23, 26, 0.78);
+  --veil: rgba(235, 237, 236, 0.66);
+  --wash: rgba(21, 23, 26, 0.06);
+  --wash-2: rgba(21, 23, 26, 0.12);
+  --focus: #15171A;
+  /* round 7: the spine is the scheme's signal colour at full opacity (page.js), drawn as is, not multiplied */
+  --sp: #15171A; --sp-spark: #15171A; --sp-glow: transparent; --sp-blend: normal;
+  color-scheme: light;
+}
+:root[data-theme="light"][data-scheme="plasma"] { --btn-hover: #24304F; --btn-press: #313C5C; --focus: #24304F; --sp: #7F8CFF; --sp-spark: #7F8CFF; }
+:root[data-theme="light"][data-scheme="coral"] { --sp: #B5384F; --sp-spark: #B5384F; }   /* 4.9:1 on Alloy */
+/* without JavaScript, the system setting */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) { --ground: #EBEDEC; --raised: #F6F7F6; --ink: #15171A; --ink-2: #33373C; --steel: #5A5F66; --rule: #CDD0CF;
+    --btn: #15171A; --on-btn: #F6F7F6; --btn-hover: #2E3237; --btn-press: #3A3F45; --quiet-line: rgba(21, 23, 26, 0.5);
+    --quiet-line-hi: rgba(21, 23, 26, 0.78); --veil: rgba(235, 237, 236, 0.66); --focus: #15171A; color-scheme: light; }
+}
+[data-text="geist"] { --sans: "Geist", "Funnel Sans", system-ui, sans-serif; }
+
+/* the grid: phones are a layout of their own (the spine owns the left gutter); 12 columns from 960 px */
+@media (min-width: 600px) { :root { --m: 64px; --mr: 40px; } }
+@media (min-width: 960px) {
+  :root { --mm: 40px; --gut: 24px; --gap: 160px; --head: 88px;
+    --m: max(var(--mm), calc((100vw - 1312px)/2)); --mr: var(--m); }
+}
+@media (min-width: 1200px) { :root { --mm: 64px; } }
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; background: var(--ground); }
+body {
+  margin: 0; background: var(--ground); color: var(--ink);
+  font: 400 16px/1.6 var(--sans); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+  overflow-x: clip; font-synthesis: none; hanging-punctuation: first allow-end last;
+  font-kerning: normal; font-optical-sizing: auto;
+}
+h1, h2, h3, p, ol, ul, dl, dd, fieldset, legend { margin: 0; padding: 0; }
+fieldset { border: 0; min-width: 0; }
+a { color: inherit; }
+.vh { position: absolute !important; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 2px; }
+
+.skip { position: absolute; z-index: 20; left: var(--s3); top: var(--s2); padding: 12px 16px; background: var(--ink); color: var(--ground);
+  font-weight: 600; text-decoration: none; border-radius: 2px; transform: translateY(-160%); }
+.skip:focus-visible { transform: none; outline-offset: 2px; }
+
+/* the switch's cross-fade: the View Transitions API where it exists (page.js), else every colour eases */
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: var(--fade); animation-timing-function: cubic-bezier(0.2, 0, 0, 1); }
+.theme-fade, .theme-fade *, .theme-fade *::before, .theme-fade *::after {
+  transition: background-color var(--fade) ease, color var(--fade) ease, border-color var(--fade) ease,
+    text-decoration-color var(--fade) ease, stroke var(--fade) ease, fill var(--fade) ease !important; }
+/* a button's fill and its label would cross through the same grey half way: buttons switch in one step instead */
+.theme-fade .btn, .theme-fade .btn * { transition: none !important; }
+
+/* ---------- the field and the spine ---------- */
+/* the canvas is the large viewport, so the iOS toolbar collapsing never resizes it (hero.js reads its own size) */
+#field { position: fixed; left: 0; top: 0; width: 100%; height: 100vh; height: 100lvh; display: block; z-index: 0; }
+.spine { position: fixed; left: 0; top: 0; width: 100%; height: 100vh; height: 100lvh; z-index: 1; pointer-events: none; overflow: visible;
+  mix-blend-mode: var(--sp-blend); }   /* dark: never adds light on the sphere's; light: never lightens its ink */
+.spine path { fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+.sp-glow { stroke: var(--sp-glow); stroke-width: 6; opacity: 0.04; }
+.sp-line, .sp-thru, .sp-ticks { stroke: var(--sp); stroke-width: 1.25; }
+.sp-sparks { stroke: var(--sp-spark); stroke-width: 1.5; stroke-dasharray: 2 34; }
+.sp-pulse { stroke: var(--sp); stroke-width: 1.5; }
+.sp-tip { fill: var(--sp); }
+.no-gl .spine, .no-gl #field, .no-gl .orbit, .no-gl .orbit-hint { display: none; }
+/* the orbit hit area: over the sphere only, inside the art box; the rest of the page scrolls as usual */
+.orbit { position: fixed; z-index: 2; left: 0; top: 0; width: 0; height: 0; border-radius: 50%; touch-action: none; cursor: grab;
+  overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+.orbit:active { cursor: grabbing; }
+.orbit:focus-visible { outline: 1px solid var(--steel); outline-offset: 4px; }
+.orbit-hint { position: fixed; z-index: 2; left: 0; top: 0; white-space: nowrap; pointer-events: none; margin: 0;
+  font: 400 14px/1 var(--sans); color: var(--steel); opacity: 0; transition: opacity 600ms ease; }
+.orbit-hint.on { opacity: 1; }
+html, body { overscroll-behavior-y: none; }
+body { -webkit-tap-highlight-color: transparent; }
+
+/* ---------- header: the lockup, the theme switch and one way to talk ---------- */
+.top { position: absolute; z-index: 5; top: 0; left: 0; right: 0; height: calc(var(--head) + env(safe-area-inset-top, 0px));
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s3);
+  padding: env(safe-area-inset-top, 0px) var(--s3) 0; }
+.brand { display: block; padding: 6px 0; color: var(--ink); border-radius: 2px; text-decoration: none; }
+.lk { display: flex; align-items: center; }
+.mark { display: block; flex: none; background: currentColor;
+  -webkit-mask: var(--mark-src) center / contain no-repeat; mask: var(--mark-src) center / contain no-repeat; }
+.wm { font-family: var(--display); font-weight: 400; letter-spacing: 0.04em; white-space: nowrap; }
+.top .lk { gap: 10px; }
+.top .mark { width: 32px; height: 32px; margin-left: -2px; }
+.top .wm { font-size: 17px; line-height: 1; }
+.top-end { display: flex; align-items: center; gap: var(--s2); }
+
+/* the theme switch: a sun or a moon, the icon of the theme you are in; a 44 px target in every state */
+.mode { position: relative; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; margin: 0;
+  border: 0; border-radius: 50%; background: transparent; color: var(--ink); cursor: pointer;
+  transition: background-color 160ms ease, transform 160ms cubic-bezier(0.2, 0, 0, 1); }
+.mode svg { width: 22px; height: 22px; overflow: visible; }
+.mode .core { fill: currentColor; r: 7.5px; transition: r var(--fade) cubic-bezier(0.2, 0, 0, 1); }
+.mode .bite { transition: cx var(--fade) cubic-bezier(0.2, 0, 0, 1), cy var(--fade) cubic-bezier(0.2, 0, 0, 1); }
+.mode .rays path { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+.mode .rays { transform-origin: 12px 12px; opacity: 0; transform: rotate(-45deg) scale(0.6);
+  transition: transform var(--fade) cubic-bezier(0.2, 0, 0, 1), opacity calc(var(--fade)*0.6) ease; }
+/* light: the sun, a small disc and eight rays */
+[data-theme="light"] .mode .core { r: 4.25px; }
+[data-theme="light"] .mode .bite { cx: 27px; cy: -3px; }
+[data-theme="light"] .mode .rays { opacity: 1; transform: none; }
+.mode:hover { background: var(--wash); }
+.mode:active { background: var(--wash-2); transform: scale(0.94); }
+.mode:focus-visible { outline-offset: 0; }
+
+/* ---------- buttons: one primary per view, monochrome (B51); the rest quiet outlines ---------- */
+.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 24px;
+  font: 500 17px/1.2 var(--sans); text-decoration: none; text-align: center; border-radius: 2px;
+  border: 1px solid transparent; cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease; }
+.btn.primary { background: var(--btn); color: var(--on-btn); }
+.btn.primary:hover { background: var(--btn-hover); }
+.btn.primary:active { background: var(--btn-press); box-shadow: inset 0 2px 0 rgba(21, 23, 26, 0.2); }
+.btn.quiet { background: var(--veil); color: var(--ink); border-color: var(--quiet-line);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.btn.quiet:hover { border-color: var(--quiet-line-hi); background: var(--wash); }
+.btn.quiet:active { background: var(--wash-2); border-color: var(--quiet-line-hi); }
+.btn.small { min-height: 44px; padding: 0 16px; font-size: 14px; }
+.text-link { display: inline-flex; align-items: center; min-height: 44px; font-weight: 500; color: var(--ink);
+  text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; text-decoration-color: var(--quiet-line);
+  border-radius: 2px; transition: text-decoration-color 160ms ease; }
+.text-link:hover { text-decoration-color: var(--ink); }
+.text-link:active { color: var(--ink-2); }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; }
+
+/* ---------- type ---------- */
+main { position: relative; z-index: 2; }
+.scene { position: relative; }
+.words { position: relative; }
+h1 { font: 400 34px/1.08 var(--display); letter-spacing: -0.02em; text-wrap: balance; max-width: 12em; }
+h2 { font: 400 34px/1.1 var(--display); letter-spacing: -0.02em; text-wrap: balance; max-width: 14em; }
+h3 { font: 500 20px/1.3 var(--display); letter-spacing: -0.005em; text-wrap: balance; }
+.body { margin-top: var(--s3); font-size: 16px; line-height: 1.6; color: var(--ink-2); max-width: 34em; text-wrap: pretty; }
+.eyebrow { font: 500 14px/1.4 var(--sans); letter-spacing: 0.01em; color: var(--steel); }
+.standfirst { margin-top: var(--s3); font-size: 16px; line-height: 1.6; color: var(--ink-2); max-width: 34em; text-wrap: pretty; }
+.cue { margin-top: var(--s4); font: 400 14px/1.4 var(--sans); color: var(--steel); }
+
+/* ---------- 1. the hero (not pinned; orbit controls live here only) ---------- */
+/* phone: the sphere in a fixed band under the header, the words after it, so the primary action sits inside the first
+   iPhone Safari screen (its bottom at or above 650 px at 390 x 844) */
+.hero { display: flex; flex-direction: column; padding: var(--head) var(--mr) var(--s5) var(--m); }
+.sphere-slot { order: -1; flex: none; height: 232px; }
+.hero-words { max-width: 600px; }
+h1 { margin-top: var(--s2); }
+.hero .actions { margin-top: var(--s4); }
+.hero .actions .btn { flex: 1 1 auto; }
+
+/* pinned scenes: the section is the scroll length, the stage sticks for it (CSS sticky: no pin spacer, and no jump
+   when the iOS toolbar collapses, because svh never changes) */
+.js .pinned { height: calc(var(--len) * 100svh); }
+.stage { position: relative; display: flex; flex-direction: column;
+  padding: var(--s4) var(--mr) calc(var(--safe-br) + env(safe-area-inset-bottom, 0px)) var(--m); }
+.js .stage { position: sticky; top: 0; height: 100svh; overflow: hidden; }
+.stage .art { flex: 1 1 auto; min-height: 30svh; }
+.stage .words { flex: 0 0 auto; }
+
+/* scene 2: five layers, one lit at a time (all five are in the list; the rest wait in the same cell) */
+.lead-in { margin-top: var(--s3); font: 500 17px/1.45 var(--display); color: var(--ink); max-width: 30em; text-wrap: balance; }
+.layers { list-style: none; margin-top: var(--s4); display: grid; gap: var(--s4); }
+.layers li { padding-top: var(--s3); border-top: 1px solid var(--rule); }
+.js .layers { gap: 0; }
+.js .layers li { grid-area: 1 / 1; }
+.layers li p { margin-top: var(--s2); color: var(--ink-2); font-size: 16px; line-height: 1.55; max-width: 32em; text-wrap: pretty; }
+.band-names { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+.band-names span { position: absolute; left: 0; top: 0; width: max-content; font: 500 14px/1.25 var(--sans); color: var(--steel);
+  will-change: transform, opacity; }
+.band-names span.lit { color: var(--ink); }
+
+/* scene 3: the body, then the three facts (on a phone they take the same place, one after the other) */
+.beats { display: grid; gap: var(--s4); }
+.js .beats { gap: 0; }
+.js .beats > * { grid-area: 1 / 1; }
+.facts { list-style: none; margin-top: var(--s3); display: grid; gap: 0; }
+.fact { display: block; width: 100%; min-height: 44px; padding: var(--s3) 0; text-align: left; background: none; border: 0;
+  border-top: 1px solid var(--rule); color: var(--ink); font: 400 16px/1.4 var(--sans); cursor: pointer; border-radius: 0;
+  text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 5px; transition: text-decoration-color 160ms ease; }
+.fact:hover { text-decoration-color: var(--quiet-line); }
+.fact:active { color: var(--ink-2); }
+.fact:focus-visible { outline-offset: 2px; }
+.fact .fig { display: block; font: 400 26px/1.15 var(--mono); letter-spacing: -0.02em; color: var(--ink); white-space: nowrap;
+  font-variant-numeric: tabular-nums lining-nums; }
+.fact .cap { display: block; margin-top: var(--s2); font: 400 16px/1.4 var(--sans); color: var(--ink-2); }
+.src { padding: 0 0 var(--s3); font: 400 14px/1.6 var(--sans); color: var(--steel); }
+
+/* scene 4: two beats in one place */
+.swap { display: grid; gap: var(--s5); }
+.js .swap { gap: 0; }
+.js .swap > div { grid-area: 1 / 1; }
+.swap .text-link { margin-top: var(--s2); }
+
+/* scene 6: how we work, scrolling; the spine runs down the gutter and branches to each step */
+.work { padding: var(--gap) var(--mr) var(--gap) var(--m); }
+.steps { list-style: none; margin-top: var(--s6); display: grid; gap: var(--s6); }
+.steps li { position: relative; }
+.steps p { margin-top: var(--s2); color: var(--ink-2); max-width: 32em; text-wrap: pretty; }
+.work-art { height: 0; }
+
+/* 7. the close: the mark the field condenses into, then the words, centred on the page's axis (U31) */
+.close { justify-content: center; padding-left: var(--s4); padding-right: var(--s4); }
+.close-in { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 4svh; width: 100%; max-width: 100%; }
+.final { color: var(--ink); }
+.final .lk { flex-direction: column; gap: var(--s3); }
+.final .mark { width: 72px; height: 72px; }
+.final .wm { font-size: 26px; line-height: 1; }
+.close .line { margin-top: var(--s5); font-size: 34px; max-width: 11em; }
+.nw { white-space: nowrap; }
+.close .actions { margin-top: var(--s5); justify-content: center; }
+
+/* round 8: the close is round 4's again by default (M25): on desktop the mark beside the wordmark, one lockup centred
+   on the page's axis, the line and buttons centred under it; phones stack it. ?close=centred keeps the round 6 close
+   (Yuan's stacked lockup at every size, U31). The steps arrive a little further down, so the any-size push-in has room
+   to hold on the full sphere (Yuan, 8 Oct). */
+.js .work { padding-top: calc(var(--gap) + 8svh); }
+@media (min-width: 960px) {
+  [data-close="lockup"] .final .lk { flex-direction: row; gap: 32px; }
+  [data-close="lockup"] .final .mark { width: 96px; height: 96px; }
+  [data-close="lockup"] .final .wm { font-size: 56px; letter-spacing: 0.04em; }
+  [data-close="lockup"] .close .line { margin-top: var(--s6); }
+}
+
+/* footer: clear of the bottom-right corner */
+.foot { position: relative; z-index: 2; padding: var(--s5) var(--safe-br) calc(var(--s6) + var(--safe-br) + env(safe-area-inset-bottom, 0px)) var(--m);
+  display: grid; gap: var(--s2); justify-items: start; }
+.legal { font-size: 14px; color: var(--steel); }
+.legal a { display: inline-flex; align-items: center; min-height: 44px; color: var(--ink-2); text-underline-offset: 4px; }
+.legal a:hover { color: var(--ink); }
+/* review only: the scheme switch, a quiet segmented control */
+.schemes { margin-top: var(--s4); display: flex; flex-wrap: wrap; align-items: center; gap: 0; }
+.schemes legend { float: left; width: 100%; margin-bottom: var(--s2); font-size: 14px; color: var(--steel); }
+.schemes label { position: relative; display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; font-size: 14px;
+  color: var(--ink-2); border: 1px solid var(--quiet-line); margin-left: -1px; cursor: pointer; transition: background-color 160ms ease, color 160ms ease; }
+.schemes label:first-of-type { margin-left: 0; border-radius: 2px 0 0 2px; }
+.schemes label:last-of-type { border-radius: 0 2px 2px 0; }
+.schemes label:hover { background: var(--wash); color: var(--ink); }
+.schemes input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; margin: 0; cursor: pointer; }
+.schemes label:has(input:checked) { background: var(--ink); color: var(--ground); border-color: var(--ink); z-index: 1; }
+.schemes label:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; z-index: 2; }
+
+@media (max-width: 959px) { .js .pinned[data-scene="7"] { height: calc(1.7*100svh); } }
+@media (max-width: 359px) { .top .talk { display: none; } }
+@media (min-width: 430px) { .hero .actions .btn { flex: 0 1 auto; } }
+
+/* ---------- desktop: twelve columns; the spine at the centre gutter splits the page ---------- */
+@media (min-width: 960px) {
+  .top { padding: 0 var(--m); }
+  .top .lk { gap: 14px; }
+  .top .mark { width: 36px; height: 36px; }
+  .top .wm { font-size: 20px; }
+  .top-end { gap: var(--s3); }
+
+  h1 { margin-top: var(--s3); font-size: 48px; line-height: 1.04; letter-spacing: -0.025em; max-width: 11em; }
+  h2 { font-size: 48px; line-height: 1.04; letter-spacing: -0.025em; }
+  .body { font-size: 17px; max-width: 28em; }   /* 60 to 68 characters a line, measured */
+  .eyebrow { font-size: 17px; font-weight: 400; letter-spacing: 0; }
+
+  /* the hero: words in columns 1 to 6, the sphere in 7 to 12 */
+  .hero { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gut); align-items: center;
+    min-height: 100svh; padding: var(--head) var(--m) var(--s6); }
+  .hero-words { grid-column: 1 / span 6; max-width: none; padding-bottom: var(--s5); }
+  .standfirst { margin-top: var(--s4); font-size: 20px; line-height: 1.55; max-width: 29em; }
+  .hero .actions { margin-top: var(--s5); gap: var(--s3); }
+  .hero .actions .btn { flex: 0 0 auto; }
+  .cue { margin-top: var(--s5); }
+  .sphere-slot { order: 0; position: absolute; top: var(--head); bottom: var(--s4); right: var(--m); left: calc(50vw + var(--gut)/2); height: auto; }
+
+  /* pinned scenes: words in five columns beside the spine, the art in the other half */
+  .stage { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gut); align-items: center; padding: 0 var(--m); }
+  .stage .art { position: absolute; top: var(--s5); bottom: var(--s5); min-height: 0; }
+  html:not(.js) .stage { min-height: 100svh; }
+  .stage .words { grid-row: 1; padding-bottom: var(--s4); }
+  .words-left .words { grid-column: 1 / span 5; }
+  .words-right .words { grid-column: 8 / span 5; }
+  .words-left .art { left: calc(50vw + var(--gut)/2); right: var(--m); }
+  .words-right .art { left: var(--m); right: calc(50vw + var(--gut)/2); }
+  .layers li p { font-size: 17px; }
+  .lead-in { font-size: 20px; }
+  .band-names span { font-size: 17px; font-weight: 400; }
+  .js .beats > * { grid-area: auto; }
+  .facts { margin-top: var(--s5); }
+  .fact .cap { font-size: 17px; }
+
+  .work { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gut); padding: var(--gap) var(--m); }
+  .work-in { display: contents; }
+  .work h2 { grid-column: 1 / span 5; align-self: start; position: sticky; top: 22svh; max-width: 11em; }
+  .steps { grid-column: 8 / span 5; margin-top: 0; gap: var(--s7); padding: 12svh 0 18svh; }
+  .steps h3 { font-size: 26px; }
+  .steps p { font-size: 17px; }
+  .work-art { position: absolute; }
+
+  .close-in { grid-column: 1 / -1; }
+  .final .lk { gap: var(--s4); }
+  .final .mark { width: 104px; height: 104px; }
+  .final .wm { font-size: 34px; }
+  .close .line { font-size: 48px; max-width: 16em; }
+
+  .foot { grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gut); align-items: start; padding-right: var(--m); }
+  .foot > .legal { grid-column: 1 / span 5; }
+  .schemes { grid-column: 8 / span 5; grid-row: 1 / span 2; margin-top: 0; }
+}
+@media (min-width: 1200px) { h1 { font-size: 64px; } }
+
+/* ---------- reduced motion: no pinning; each scene is a still of its pose beside its words ---------- */
+.js.reduced .pinned { height: auto; }
+.js.reduced .stage { position: relative; height: auto; overflow: visible; padding-top: var(--gap); padding-bottom: 0; }
+.reduced .stage .art { position: relative; inset: auto; flex: none; min-height: 0; height: auto; aspect-ratio: 1 / 1; max-width: 420px; width: 100%; margin: 0 auto var(--s5); }
+.reduced .art canvas { display: block; width: 100%; height: 100%;
+  -webkit-mask-image: radial-gradient(closest-side, #000 82%, transparent); mask-image: radial-gradient(closest-side, #000 82%, transparent); }
+.reduced .band-names { display: none; }
+.js.reduced .layers { gap: var(--s4); }
+.js.reduced .layers li { grid-area: auto; }
+.js.reduced .beats, .js.reduced .swap { gap: var(--s5); }
+.js.reduced .beats > *, .js.reduced .swap > div { grid-area: auto; }
+.reduced #field, .reduced .spine { display: none; }
+.reduced .hero .sphere-slot { position: relative; height: 300px; }
+.reduced .close { padding-bottom: var(--gap); }
+.reduced .work-art { display: none; }
+@media (min-width: 960px) {
+  .reduced .stage .art { grid-row: 1; width: 100%; max-width: 520px; margin: 0; justify-self: center; }
+  .reduced .words-left .art { grid-column: 7 / span 6; }
+  .reduced .words-right .art { grid-column: 1 / span 6; }
+  .reduced .hero .sphere-slot { position: absolute; height: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn, .text-link, .fact, #field, .mode, .mode * { transition: none; }
+  .js .pinned, .js .pinned[data-scene] { height: auto; }
+  .js .stage { position: relative; top: auto; height: auto; overflow: visible; }
+}
+
+/* without JavaScript the band names have nowhere to sit, and the switches do nothing */
+html:not(.js) .band-names, html:not(.js) .schemes, html:not(.js) .mode { display: none; }

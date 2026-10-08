@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>HEY HEY LABS</title>
+<meta name="description" content="HEY HEY LABS, Melbourne. We rescue stalled apps and platforms, finish them properly and run them: design, apps, DevOps, marketing and intelligence, with security through every layer.">
+<meta name="theme-color" content="#15171A">
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@400..700&family=Funnel+Sans:wght@400..600&family=Martian+Mono:wght@400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="page.css">
+<script>
+// Theme and scheme before first paint, so no frame shows the wrong one (round 6). ?theme=light|dark overrides; then the
+// visitor's saved choice; then the system. ?scheme=mono|plasma|coral (review only) the same way; ?text=geist the text face.
+(function(){var d=document.documentElement,q=new URLSearchParams(location.search),t=q.get('theme'),s=q.get('scheme'),a,b;
+try{a=localStorage.getItem('hhl-theme');b=localStorage.getItem('hhl-scheme')}catch(e){}
+if(t!=='light'&&t!=='dark')t=a==='light'||a==='dark'?a:(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');
+d.setAttribute('data-close',q.get('close')==='centred'?'centred':'lockup');var S=/^(mono|plasma|coral)$/;if(!S.test(s||''))s=S.test(b||'')?b:'plasma';
+d.setAttribute('data-theme',t);d.setAttribute('data-scheme',s);d.classList.add('js');
+if(q.get('text')==='geist'){d.setAttribute('data-text','geist');var l=document.createElement('link');l.rel='stylesheet';l.href='https://fonts.googleapis.com/css2?family=Geist:wght@400..600&display=swap';document.head.appendChild(l)}
+var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='light'?'#EBEDEC':'#15171A')})();
+</script>
+<!-- GSAP 3.15.0 and ScrollTrigger, our own pinned copies from the npm package (vendor/README: hashes) -->
+<script src="vendor/gsap.min.js" defer></script>
+<script src="vendor/ScrollTrigger.min.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<!-- The sphere's canvas sits behind the whole page; it is decoration, described in words in each scene -->
+<canvas id="field" aria-hidden="true"></canvas>
+<!-- The spine: the pillar's line of light, leaving the sphere and running down the page between the words and the art -->
+<svg id="spine" class="spine" aria-hidden="true" focusable="false">
+  <path class="sp-glow"/><path class="sp-line"/><path class="sp-thru"/><path class="sp-ticks"/><path class="sp-sparks"/><path class="sp-pulse"/>
+  <circle class="sp-tip" r="2.25"/>
+</svg>
+<div class="orbit" id="orbit" tabindex="0" role="application" aria-roledescription="3D view" aria-label="The sphere and the phoenix. Drag to turn, pinch to zoom; arrow keys turn, plus and minus zoom, 0 resets." hidden></div>
+<p class="orbit-hint" id="orbitHint" aria-hidden="true">Drag to turn, pinch to zoom</p>
+
+<header class="top">
+  <a class="brand" href="#top" aria-label="HEY HEY LABS, back to the top">
+    <span class="lk" aria-hidden="true"><span class="mark"></span><span class="wm">HEY HEY LABS</span></span>
+  </a>
+  <div class="top-end">
+    <button class="mode" id="mode" type="button" aria-pressed="true" aria-label="Dark theme" title="Switch to the light theme">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <defs><mask id="modeBite"><rect x="-4" y="-4" width="32" height="32" fill="#fff"/><circle class="bite" cx="17.5" cy="7" r="6.2" fill="#000"/></mask></defs>
+        <circle class="core" cx="12" cy="12" r="7.5" mask="url(#modeBite)"/>
+        <g class="rays"><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.55 1.55M17.15 17.15l1.55 1.55M5.3 18.7l1.55-1.55M17.15 6.85l1.55-1.55"/></g>
+      </svg>
+    </button>
+    <a class="btn quiet small talk" href="mailto:hello@heyheylabs.com.au?subject=Talk%20to%20us">Talk to us</a>
+  </div>
+</header>
+
+<main id="main">
+  <!-- 1. The promise -->
+  <section class="scene hero" id="top" data-scene="1" aria-labelledby="s1-h">
+    <div class="hero-words words">
+      <p class="eyebrow">Rescue, rebuild, run</p>
+      <h1 id="s1-h">Your build stalled. Your idea didn&rsquo;t.</h1>
+      <p class="standfirst">You paid a studio for an app and got invoices, missed dates and code nobody else can read. We pick up what was left, keep what works, fix what broke and finish it with dates on the calendar. Then we stay and run&nbsp;it.</p>
+      <div class="actions">
+        <a class="btn primary" href="mailto:hello@heyheylabs.com.au?subject=What%20stalled">Send us what stalled</a>
+        <a class="btn quiet" href="mailto:hello@heyheylabs.com.au?subject=Something%20new">Start something new</a>
+      </div>
+      <p class="cue">Scroll to see how we bring it back</p>
+      <p class="vh">Beside these words, a sphere of blue light with a narrow white pillar up its axis, and a phoenix of flame flying around it. A thin line of light leaves the sphere's lower pole and runs down the page.</p>
+    </div>
+    <div class="art sphere-slot" aria-hidden="true"></div>
+  </section>
+
+  <!-- 2. A business is a sphere of parts -->
+  <section class="scene pinned" data-scene="2" style="--len: 2.5" aria-labelledby="s2-h">
+    <div class="stage words-left">
+      <div class="art" aria-hidden="true"></div>
+      <div class="words">
+        <h2 id="s2-h">Most stalls start in pieces.</h2>
+        <p class="body">One studio built the website, another the app, a freelancer the cloud account, and nobody owns how they fit. Every piece was billed. None of it was finished.</p>
+        <p class="lead-in">We build every layer, so there is no one else to blame.</p>
+        <ol class="layers" role="list">
+          <li><h3>Design and UX.</h3><p>How it looks, how it feels, and whether people can actually use it.</p></li>
+          <li><h3>Apps and products.</h3><p>Web, iPhone and Android, built on one back office and one sign-in.</p></li>
+          <li><h3>Platform and DevOps.</h3><p>The cloud, the pipelines and the releases: tested on every change, rolled back in one step.</p></li>
+          <li><h3>Marketing and growth.</h3><p>Search, maps, social and ads under one plan, every dollar traced to what it won.</p></li>
+          <li><h3>Intelligence.</h3><p>One current picture of the business, and agents that act on it.</p></li>
+        </ol>
+        <p class="vh">Beside these words, the sphere comes apart into five bands of light, one above the other, and each lights in turn.</p>
+      </div>
+      <div class="band-names" aria-hidden="true">
+        <span>Design and UX</span><span>Apps and products</span><span>Platform and DevOps</span><span>Marketing and growth</span><span>Intelligence</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. The line through the middle -->
+  <section class="scene pinned" data-scene="3" style="--len: 1.9" aria-labelledby="s3-h">
+    <div class="stage words-right">
+      <div class="art" aria-hidden="true"></div>
+      <div class="words">
+        <h2 id="s3-h">Security and compliance run through every layer.</h2>
+        <div class="beats">
+          <p class="body beat-a">This is the part we specialise in. Access only for the people and the agents that need it, every change logged, your data stored in Australia and backed up, and the rules your industry answers to written in as checks that can stop a release. It is built in from the first day, so there is nothing to bolt on before an audit.</p>
+          <ul class="facts beat-b" role="list">
+            <li><button type="button" class="fact" aria-expanded="false" aria-controls="src-1"><span class="fig">16,000+</span> <span class="cap">Automated tests on every change</span></button><p class="src" id="src-1" hidden>Merge queue census, 27 Sep 2026: 16,001 passed.</p></li>
+            <li><button type="button" class="fact" aria-expanded="false" aria-controls="src-2"><span class="fig">3&nbsp;min&nbsp;39&nbsp;s</span> <span class="cap">To roll back a release, drilled</span></button><p class="src" id="src-2" hidden>Rollback drill, 6 Sep 2026.</p></li>
+            <li><button type="button" class="fact" aria-expanded="false" aria-controls="src-3"><span class="fig">90&nbsp;days</span> <span class="cap">Between encryption key rotations</span></button><p class="src" id="src-3" hidden>Cloud KMS key policy on Asimov Cloud, checked 7 Oct 2026.</p></li>
+          </ul>
+        </div>
+        <p class="vh">Beside these words, the five bands close back into the sphere and a line of light runs straight through all of them, with sparks rising along it.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. When a build stalls -->
+  <section class="scene pinned" data-scene="4" style="--len: 2.3" aria-labelledby="s4-h1">
+    <div class="stage words-left">
+      <div class="art" aria-hidden="true"></div>
+      <div class="words">
+        <div class="swap">
+          <div class="beat-a">
+            <h2 id="s4-h1">Halfway built, and stuck.</h2>
+            <p class="body">The studio moved on to a bigger client. The quote doubled. The one engineer left. It happens to good&nbsp;ideas.</p>
+          </div>
+          <div class="beat-b">
+            <h2 id="s4-h2">We bring it back.</h2>
+            <p class="body">In the first week we read what exists and tell you plainly what it is worth. We move the keys and the hosting into your name, keep what is good and finish the rest with dates. Nothing you paid for is wasted.</p>
+            <a class="text-link" href="mailto:hello@heyheylabs.com.au?subject=What%20stalled">Send us what stalled</a>
+          </div>
+        </div>
+        <p class="vh">Beside these words, the light slows and goes out to a few cold embers, the flame phoenix falls into the sphere's lower pole, and after a pause it is born again at the top as a rainbow phoenix, and the light comes back.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. Any size -->
+  <section class="scene pinned" data-scene="5" style="--len: 2.1" aria-labelledby="s5-h">
+    <div class="stage words-right">
+      <div class="art" aria-hidden="true"></div>
+      <div class="words">
+        <h2 id="s5-h">The same care, at any size.</h2>
+        <p class="body">A two-person practice and a national business deserve the same honesty: a fixed scope, dates you can hold us to, code you own outright and data that stays yours.</p>
+        <p class="vh">Beside these words, the view pulls back until the sphere is one bright point among many others, then pushes in until it fills the screen.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. How we work -->
+  <section class="scene work" data-scene="6" aria-labelledby="s6-h">
+    <div class="work-in">
+      <h2 id="s6-h">Something working in the first week.</h2>
+      <ol class="steps" role="list">
+        <li><h3>Show.</h3><p>A working piece of your own problem, on your own data, before you sign anything.</p></li>
+        <li><h3>Scope.</h3><p>One job, a start date, an end date and a review, in the calendar on day one.</p></li>
+        <li><h3>Build.</h3><p>Our engineers beside your people, every change tested and logged.</p></li>
+        <li><h3>Run.</h3><p>We keep it running, watch it, and add the next piece when it earns its place.</p></li>
+      </ol>
+    </div>
+    <div class="art work-art" aria-hidden="true"></div>
+  </section>
+
+  <!-- 7. The mark -->
+  <section class="scene pinned" data-scene="7" style="--len: 1.9" aria-labelledby="s7-h">
+    <div class="stage close">
+      <div class="close-in">
+        <div class="final" role="img" aria-label="HEY HEY LABS">
+          <span class="lk"><span class="mark"></span><span class="wm">HEY HEY LABS</span></span>
+        </div>
+        <h2 id="s7-h" class="line">What stalled can rise&nbsp;again.</h2>
+        <div class="actions">
+          <a class="btn primary" href="mailto:hello@heyheylabs.com.au?subject=What%20stalled">Send us what stalled</a>
+          <a class="btn quiet" href="mailto:hello@heyheylabs.com.au?subject=Talk%20to%20us">Talk to us</a>
+        </div>
+        <p class="vh">Above these words, the rainbow phoenix makes a last pass into the sphere's top pole and every particle of light streams into the HEY HEY LABS mark: five rounded bands split down the middle by a thin line, glowing blue-white with a faint rainbow, then white.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <p class="legal">HEY HEY LABS &middot; Melbourne. Hey Hey Labs Pty Ltd.</p>
+  <p class="legal"><a href="mailto:hello@heyheylabs.com.au">hello@heyheylabs.com.au</a></p>
+</footer>
+
+<script type="module" src="page.js"></script>
+</body>
+</html>
