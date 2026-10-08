@@ -4,7 +4,7 @@ set -euo pipefail
 D="${1:-$HOME/code/design}/2026-10-07-hhl-landing-revive"
 cd "$(dirname "$0")/.."
 git -C "$D/.." pull --rebase -q
-rm -rf site && mkdir -p docs/vendor
+rm -rf docs && mkdir -p docs/vendor
 cp "$D"/{index.html,page.css,page.js,hero.js,bird.js,favicon.svg,mark.svg} docs/
 cp "$D"/vendor/*.js docs/vendor/
 python3 - docs/index.html <<'PY'
