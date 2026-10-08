@@ -1,0 +1,5 @@
+# heyheylabs.com.au: everything here is public. Search engines and AI crawlers are welcome.
+User-agent: *
+Allow: /
+
+Sitemap: https://heyheylabs.com.au/sitemap.xml
