@@ -23,7 +23,11 @@ def wanted():
     s = PAGE.read_text(encoding='utf-8')
     tags = re.findall(r'<script\b([^>]*)>(.*?)</script>', s, flags=re.S | re.I)
     # a script's hash covers the exact text between the tags; no entity decoding applies inside <script>
-    scripts = [sha(body) for attrs, body in tags if not re.search(r'\bsrc\s*=', attrs, flags=re.I)]
+    # a data block (JSON-LD and any other non-JavaScript type) never executes, so CSP never checks it
+    def runs(attrs):
+        m = re.search(r'\btype\s*=\s*["\']?([^"\'\s>]+)', attrs, flags=re.I)
+        return m is None or m.group(1).lower() in ('module', 'text/javascript', 'application/javascript')
+    scripts = [sha(body) for attrs, body in tags if not re.search(r'\bsrc\s*=', attrs, flags=re.I) and runs(attrs)]
     # an attribute is hashed after entity decoding, as the browser sees it
     styles = sorted({sha(html.unescape(v)) for v in re.findall(r'\sstyle\s*=\s*"([^"]*)"', s, flags=re.I)})
     if re.search(r"\sstyle\s*=\s*'", s, flags=re.I) or re.search(r'\son[a-z]+\s*=', s, flags=re.I):
