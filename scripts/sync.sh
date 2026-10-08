@@ -16,4 +16,6 @@ open(p, 'w').write(s)
 PY
 echo heyheylabs.com.au > docs/CNAME
 touch docs/.nojekyll
+# the CSP admits the inline script and style attributes by hash: rewrite those hashes in nginx.conf
+python3 scripts/csp.py --write
 echo "synced from design $(git -C "$D/.." rev-parse --short HEAD)"
