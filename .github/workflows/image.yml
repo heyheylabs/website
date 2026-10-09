@@ -1,0 +1,77 @@
+# Build the website as an nginx image and push it to Asimov's platform-web registry (HHL-WEB-4).
+# Skipped until repo variable HHL_WEB_IMAGE_CD is `on`, which waits for the WIF provider (HHL-WEB-1), the push account
+# (HHL-WEB-2) and the immutable repository (HHL-WEB-3) in cloud-foundation. GitHub-hosted runner: this repo is public,
+# so its minutes are free, and the hhl-gke self-hosted runners never take a public repo's jobs.
+# The push deploys nothing: a digest reaches the cluster through a digest-bump PR in heyheylabs/asimov-platform.
+name: image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/**
+      - Dockerfile
+      - .dockerignore
+      - nginx.conf
+      - scripts/csp.py
+      - .github/workflows/image.yml
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: image
+  cancel-in-progress: false
+
+jobs:
+  image:
+    if: vars.HHL_WEB_IMAGE_CD == 'on'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      IMAGE: australia-southeast1-docker.pkg.dev/asimov-d78f/platform-web/site:${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The CSP admits index.html's inline script and style attributes by hash; a stale hash breaks the live page
+      - name: CSP hashes match docs/index.html
+        run: python3 scripts/csp.py
+
+      - name: Build
+        run: docker build -t "$IMAGE" .
+
+      # Exchanges this run's OIDC token for web-ci-push@asimov-d78f; the provider admits only this repository's
+      # main-branch run of this workflow file (HHL-WEB-1)
+      - id: auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.HHL_WEB_WIF_PROVIDER }}
+          service_account: ${{ vars.HHL_WEB_PUSH_SA }}
+          token_format: access_token
+          access_token_lifetime: 600s
+
+      - name: Push
+        env:
+          TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: |
+          printf '%s' "$TOKEN" | docker login -u oauth2accesstoken --password-stdin https://australia-southeast1-docker.pkg.dev
+          docker push "$IMAGE"
+          digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$IMAGE")
+          {
+            echo "### platform-web image"
+            echo
+            echo "Pin this in heyheylabs/asimov-platform \`clusters/asimov/platform-web\` (digest-bump PR):"
+            echo
+            echo '```'
+            echo "$digest"
+            echo '```'
+            echo
+            echo "Built from \`${GITHUB_SHA}\`, tag \`site:${GITHUB_SHA}\` (the repository's tags are immutable)."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "digest: $digest"
+          docker logout https://australia-southeast1-docker.pkg.dev

@@ -1,0 +1,6 @@
+# The build context is the site and its nginx config, nothing else
+*
+!docs/
+!nginx.conf
+docs/CNAME
+docs/.nojekyll
