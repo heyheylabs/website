@@ -1,15 +1,11 @@
-/* HEY HEY LABS landing, round 6 (Thu 8 Oct 2026): two designed themes, three colour schemes for review, one type scale,
-   one 12-column grid. Seven scenes; the sphere is on every screen (B52) and the spine, the mark's thin line, runs the
-   page (M19, M23, M24). Buttons are monochrome (B51).
-
-   Themes (U30): dark is the Graphite ground with the plasma sphere; light is the Alloy ground with the sphere drawn as
-   fine Graphite ink and a soft cool halo (hero.js, uDay). [data-theme] is set before first paint by the inline head
-   script; without JavaScript the system setting picks.
-   Schemes (Tim picks, brands/hhl section 4): mono "Graphite" (no colour at all), plasma "Plasma" (the sphere's
-   blue-white is the only colour, the default), coral "Coral" (B30's coral as the one signal: the spine and the pillar).
-   Type: Funnel Display 400 for display and the wordmark, 500 for small heads; Funnel Sans for text (?text=geist to
-   compare); Martian Mono only for the three proof figures. Scale (brands/hhl section 5): 14, 17, 20, 26, 34, 48, 64
-   (16 for phone body). Space (the brand's scale): 4, 8, 16, 24, 40, 64, 104, 160. Radius 2 px; the toggle is round. */
+/* HEY HEY LABS landing, variant v3-precision (Thu 8 Oct 2026), built on round 8's engine, themes and story.
+   Precision: an oversized sphere bleeding off the screen's edge, opposite one headline set very large on a strict
+   12-column grid; every screen one headline and at most one short line; proof set like a specification.
+   Themes (U30): dark, the Graphite ground with the plasma sphere; light, the Alloy ground with the sphere as Graphite
+   ink. [data-theme] is set before first paint by the head script; without JavaScript the system setting picks.
+   Type: Funnel Display 400 for display and the wordmark, Funnel Sans for text; Martian Mono only for the proof
+   figures' sources (machine readouts). Scale: 14, 17, 20, 26, 34, 48, 64, 88, 120. Space: 4, 8, 16, 24, 40, 64, 104,
+   160. Radius 2 px; the theme toggle is round. Buttons are monochrome (B51). */
 
 :root {
   /* dark, the default */
@@ -19,22 +15,24 @@
   --ink-2: #CFD0D2;        /* reading text: 11.6:1 */
   --steel: #9BA1A8;        /* quiet labels and sources: 6.9:1 */
   --rule: #2E3237;         /* hairlines only */
+  --lead: rgba(155, 161, 168, 0.55);   /* the callouts' leader lines */
   --btn: #F3F2F0; --on-btn: #15171A;          /* primary: 16.1:1 */
   --btn-hover: #FFFFFF; --btn-press: #DADBDD;
   --quiet-line: rgba(243, 242, 240, 0.42);    /* the quiet button's outline, 4.3:1 on Graphite */
   --quiet-line-hi: rgba(243, 242, 240, 0.7);
   --veil: rgba(21, 23, 26, 0.62);
-  --wash: rgba(243, 242, 240, 0.08);          /* the toggle's hover */
+  --wash: rgba(243, 242, 240, 0.08);
   --wash-2: rgba(243, 242, 240, 0.14);
   --focus: #F3F2F0;
-  /* the spine (SVG over the canvas): every stroke at or under the sphere's peak, blended so it never adds light */
+  /* the axis (SVG over the canvas): every stroke at or under the sphere's peak, blended so it never adds light */
   --sp: #C9CBCE; --sp-spark: #C9C2B8; --sp-glow: #8F9BD0; --sp-blend: lighten;
   color-scheme: dark;
 
-  --m: 40px;               /* phone: the text column's left edge (the spine's rail is at 16) */
-  --mr: 24px;              /* phone: the right margin */
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --m: 24px;               /* phone: ONE 24 px gutter for the header, the words, the hint and the buttons (v3-r2, from v4) */
+  --mr: 24px;
   --gut: 16px;
-  --rail: 16px;
   --head: 72px;
   --safe-br: 72px;         /* the bottom-right corner stays clear: the published site's Back bar */
   --gap: 104px;
@@ -43,11 +41,12 @@
   --sans: "Funnel Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "Martian Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --s1: 4px; --s2: 8px; --s3: 16px; --s4: 24px; --s5: 40px; --s6: 64px; --s7: 104px; --s8: 160px;
+  /* the display sizes: phone first, then 960 and 1200 */
+  --t-h1: 48px; --t-h2: 48px; --t-body: 17px;
   /* the mark, the thin spine (t01, B57): ONE file reference; page.js reads it here for the particle targets too */
   --mark-src: url("mark.svg");
   --fade: 300ms;
 }
-/* the schemes in dark */
 [data-scheme="plasma"] { --btn-hover: #E3E8FF; --btn-press: #CDD5FA; --focus: #E3E8FF; --sp: #C3CBEA; --sp-spark: #DCE2FA; }
 [data-scheme="coral"] { --sp: #FFABA5; --sp-spark: #FFC9C2; --sp-glow: #FFABA5; }
 
@@ -59,6 +58,7 @@
   --ink-2: #33373C;        /* reading text: 10.2:1 */
   --steel: #5A5F66;        /* 5.5:1 */
   --rule: #CDD0CF;
+  --lead: rgba(90, 95, 102, 0.6);
   --btn: #15171A; --on-btn: #F6F7F6;          /* 16.7:1 */
   --btn-hover: #2E3237; --btn-press: #3A3F45;
   --quiet-line: rgba(21, 23, 26, 0.5);        /* 3.2:1 on Alloy */
@@ -67,27 +67,28 @@
   --wash: rgba(21, 23, 26, 0.06);
   --wash-2: rgba(21, 23, 26, 0.12);
   --focus: #15171A;
-  /* round 7: the spine is the scheme's signal colour at full opacity (page.js), drawn as is, not multiplied */
   --sp: #15171A; --sp-spark: #15171A; --sp-glow: transparent; --sp-blend: normal;
   color-scheme: light;
 }
 :root[data-theme="light"][data-scheme="plasma"] { --btn-hover: #24304F; --btn-press: #313C5C; --focus: #24304F; --sp: #7F8CFF; --sp-spark: #7F8CFF; }
-:root[data-theme="light"][data-scheme="coral"] { --sp: #B5384F; --sp-spark: #B5384F; }   /* 4.9:1 on Alloy */
-/* without JavaScript, the system setting */
+:root[data-theme="light"][data-scheme="coral"] { --sp: #B5384F; --sp-spark: #B5384F; }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) { --ground: #EBEDEC; --raised: #F6F7F6; --ink: #15171A; --ink-2: #33373C; --steel: #5A5F66; --rule: #CDD0CF;
     --btn: #15171A; --on-btn: #F6F7F6; --btn-hover: #2E3237; --btn-press: #3A3F45; --quiet-line: rgba(21, 23, 26, 0.5);
     --quiet-line-hi: rgba(21, 23, 26, 0.78); --veil: rgba(235, 237, 236, 0.66); --focus: #15171A; color-scheme: light; }
 }
-[data-text="geist"] { --sans: "Geist", "Funnel Sans", system-ui, sans-serif; }
 
-/* the grid: phones are a layout of their own (the spine owns the left gutter); 12 columns from 960 px */
-@media (min-width: 600px) { :root { --m: 64px; --mr: 40px; } }
+/* the grid: phones are a layout of their own (the left margin holds scene 6's marker); 12 columns from 960 px */
+@media (min-width: 600px) { :root { --m: 40px; --mr: 40px; } }
 @media (min-width: 960px) {
   :root { --mm: 40px; --gut: 24px; --gap: 160px; --head: 88px;
-    --m: max(var(--mm), calc((100vw - 1312px)/2)); --mr: var(--m); }
+    --m: max(var(--mm), calc((100vw - 1312px)/2)); --mr: var(--m);
+    --t-h1: 88px; --t-h2: 64px; --t-body: 20px; }
 }
-@media (min-width: 1200px) { :root { --mm: 64px; } }
+@media (min-width: 1200px) { :root { --mm: 64px; --t-h1: 120px; --t-h2: 88px; } }
+/* short desktop screens (a 1280 x 720 or 1366 x 768 laptop): the display steps down so every stage's words fit */
+@media (min-width: 960px) and (max-height: 820px) { :root { --t-h1: 88px; --t-h2: 64px; --t-body: 18px; } }
+@media (min-width: 960px) and (max-height: 660px) { :root { --t-h1: 72px; --t-h2: 48px; --t-body: 17px; } }
 
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; background: var(--ground); }
@@ -98,50 +99,55 @@ body {
   font-kerning: normal; font-optical-sizing: auto;
 }
 h1, h2, h3, p, ol, ul, dl, dd, fieldset, legend { margin: 0; padding: 0; }
-fieldset { border: 0; min-width: 0; }
 a { color: inherit; }
 .vh { position: absolute !important; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.nw { white-space: nowrap; }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 2px; }
 
-.skip { position: absolute; z-index: 20; left: var(--s3); top: var(--s2); padding: 12px 16px; background: var(--ink); color: var(--ground);
-  font-weight: 600; text-decoration: none; border-radius: 2px; transform: translateY(-160%); }
+.skip { position: absolute; z-index: 20; left: var(--s3); top: calc(var(--s2) + var(--safe-t)); padding: 12px 16px; background: var(--ink); color: var(--ground);
+  font-weight: 600; text-decoration: none; border-radius: 2px; transform: translateY(-200%); }
 .skip:focus-visible { transform: none; outline-offset: 2px; }
 
-/* the switch's cross-fade: the View Transitions API where it exists (page.js), else every colour eases */
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: var(--fade); animation-timing-function: cubic-bezier(0.2, 0, 0, 1); }
 .theme-fade, .theme-fade *, .theme-fade *::before, .theme-fade *::after {
   transition: background-color var(--fade) ease, color var(--fade) ease, border-color var(--fade) ease,
     text-decoration-color var(--fade) ease, stroke var(--fade) ease, fill var(--fade) ease !important; }
-/* a button's fill and its label would cross through the same grey half way: buttons switch in one step instead */
 .theme-fade .btn, .theme-fade .btn * { transition: none !important; }
 
-/* ---------- the field and the spine ---------- */
-/* the canvas is the large viewport, so the iOS toolbar collapsing never resizes it (hero.js reads its own size) */
+/* ---------- the field, the axis (M33: the line stays with the sphere), the status bar's cover ---------- */
 #field { position: fixed; left: 0; top: 0; width: 100%; height: 100vh; height: 100lvh; display: block; z-index: 0; }
 .spine { position: fixed; left: 0; top: 0; width: 100%; height: 100vh; height: 100lvh; z-index: 1; pointer-events: none; overflow: visible;
-  mix-blend-mode: var(--sp-blend); }   /* dark: never adds light on the sphere's; light: never lightens its ink */
+  mix-blend-mode: var(--sp-blend); }
 .spine path { fill: none; stroke-linecap: butt; stroke-linejoin: round; }
 .sp-glow { stroke: var(--sp-glow); stroke-width: 6; opacity: 0.04; }
 .sp-line, .sp-thru, .sp-ticks { stroke: var(--sp); stroke-width: 1.25; }
+.sp-lead { stroke: var(--lead); stroke-width: 1; }
+.spine path.sp-lead-dot { stroke: var(--ink-2); stroke-width: 4; stroke-linecap: round; }
 .sp-sparks { stroke: var(--sp-spark); stroke-width: 1.5; stroke-dasharray: 2 34; }
 .sp-pulse { stroke: var(--sp); stroke-width: 1.5; }
-.sp-tip { fill: var(--sp); }
 .no-gl .spine, .no-gl #field, .no-gl .orbit, .no-gl .orbit-hint { display: none; }
-/* the orbit hit area: over the sphere only, inside the art box; the rest of the page scrolls as usual */
+/* the iPhone's status bar: the ground under the clock (and a short fade below it), so no word scrolls under it.
+   On a desktop the inset is 0 and so is all of this */
+.safe-top { position: fixed; z-index: 6; left: 0; right: 0; top: 0; height: var(--safe-t); background: var(--ground); pointer-events: none; }
+.safe-top::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: min(12px, var(--safe-t));
+  background: linear-gradient(var(--ground), rgba(0, 0, 0, 0)); }
+:root[data-theme="light"] .safe-top::after { background: linear-gradient(var(--ground), rgba(235, 237, 236, 0)); }
+:root:not([data-theme="light"]) .safe-top::after { background: linear-gradient(var(--ground), rgba(21, 23, 26, 0)); }
 .orbit { position: fixed; z-index: 2; left: 0; top: 0; width: 0; height: 0; border-radius: 50%; touch-action: none; cursor: grab;
   overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 .orbit:active { cursor: grabbing; }
 .orbit:focus-visible { outline: 1px solid var(--steel); outline-offset: 4px; }
 .orbit-hint { position: fixed; z-index: 2; left: 0; top: 0; white-space: nowrap; pointer-events: none; margin: 0;
-  font: 400 14px/1 var(--sans); color: var(--steel); opacity: 0; transition: opacity 600ms ease; }
-.orbit-hint.on { opacity: 1; }
+  font: 400 14px/1 var(--sans); color: var(--steel); opacity: 0; transition: opacity 120ms ease; }
+/* v3-r5 (review finding 5): in over 600 ms, out over 120 ms, so it never lingers as a ghost behind scene 2 */
+.orbit-hint.on { opacity: 1; transition-duration: 600ms; }
 html, body { overscroll-behavior-y: none; }
 body { -webkit-tap-highlight-color: transparent; }
 
 /* ---------- header: the lockup, the theme switch and one way to talk ---------- */
-.top { position: absolute; z-index: 5; top: 0; left: 0; right: 0; height: calc(var(--head) + env(safe-area-inset-top, 0px));
+.top { position: absolute; z-index: 5; top: 0; left: 0; right: 0; height: calc(var(--head) + var(--safe-t));
   display: flex; align-items: center; justify-content: space-between; gap: var(--s3);
-  padding: env(safe-area-inset-top, 0px) var(--s3) 0; }
+  padding: var(--safe-t) var(--m) 0 var(--m); }
 .brand { display: block; padding: 6px 0; color: var(--ink); border-radius: 2px; text-decoration: none; }
 .lk { display: flex; align-items: center; }
 .mark { display: block; flex: none; background: currentColor;
@@ -150,9 +156,11 @@ body { -webkit-tap-highlight-color: transparent; }
 .top .lk { gap: 10px; }
 .top .mark { width: 32px; height: 32px; margin-left: -2px; }
 .top .wm { font-size: 17px; line-height: 1; }
+/* one primary action per view (v3-r2): on a phone the hero's own "Talk to an engineer" is the only button on the first
+   screen, so the header's "Talk to us" waits for a wider screen */
+@media (max-width: 767px) { .top .talk { display: none; } .top-end { margin-right: -10px; } }
 .top-end { display: flex; align-items: center; gap: var(--s2); }
 
-/* the theme switch: a sun or a moon, the icon of the theme you are in; a 44 px target in every state */
 .mode { position: relative; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; margin: 0;
   border: 0; border-radius: 50%; background: transparent; color: var(--ink); cursor: pointer;
   transition: background-color 160ms ease, transform 160ms cubic-bezier(0.2, 0, 0, 1); }
@@ -162,7 +170,6 @@ body { -webkit-tap-highlight-color: transparent; }
 .mode .rays path { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
 .mode .rays { transform-origin: 12px 12px; opacity: 0; transform: rotate(-45deg) scale(0.6);
   transition: transform var(--fade) cubic-bezier(0.2, 0, 0, 1), opacity calc(var(--fade)*0.6) ease; }
-/* light: the sun, a small disc and eight rays */
 [data-theme="light"] .mode .core { r: 4.25px; }
 [data-theme="light"] .mode .bite { cx: 27px; cy: -3px; }
 [data-theme="light"] .mode .rays { opacity: 1; transform: none; }
@@ -171,7 +178,7 @@ body { -webkit-tap-highlight-color: transparent; }
 .mode:focus-visible { outline-offset: 0; }
 
 /* ---------- buttons: one primary per view, monochrome (B51); the rest quiet outlines ---------- */
-.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 24px;
+.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 52px; padding: 0 28px;
   font: 500 17px/1.2 var(--sans); text-decoration: none; text-align: center; border-radius: 2px;
   border: 1px solid transparent; cursor: pointer;
   transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease; }
@@ -183,131 +190,194 @@ body { -webkit-tap-highlight-color: transparent; }
 .btn.quiet:hover { border-color: var(--quiet-line-hi); background: var(--wash); }
 .btn.quiet:active { background: var(--wash-2); border-color: var(--quiet-line-hi); }
 .btn.small { min-height: 44px; padding: 0 16px; font-size: 14px; }
-.text-link { display: inline-flex; align-items: center; min-height: 44px; font-weight: 500; color: var(--ink);
+.text-link { display: inline-flex; align-items: center; min-height: 44px; font-weight: 500; font-size: var(--t-body); color: var(--ink);
   text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; text-decoration-color: var(--quiet-line);
   border-radius: 2px; transition: text-decoration-color 160ms ease; }
 .text-link:hover { text-decoration-color: var(--ink); }
 .text-link:active { color: var(--ink-2); }
 .actions { display: flex; flex-wrap: wrap; gap: 12px; }
 
-/* ---------- type ---------- */
+/* ---------- type: very large, few words ---------- */
 main { position: relative; z-index: 2; }
+/* v3-r5 (review findings 1 and 2): every block of copy the story moves takes its opacity from three factors that never
+   inherit: --t its own beat (the scrubbed timelines), --g its scene's exit order (page.js placeWords) and --b a
+   button's timed fade (120 ms, never left partial) */
+@property --t { syntax: '<number>'; inherits: false; initial-value: 1; }
+@property --g { syntax: '<number>'; inherits: false; initial-value: 1; }
+@property --b { syntax: '<number>'; inherits: false; initial-value: 1; }
+.js .op { opacity: calc(var(--t, 1) * var(--g, 1) * var(--b, 1)); }
 .scene { position: relative; }
 .words { position: relative; }
-h1 { font: 400 34px/1.08 var(--display); letter-spacing: -0.02em; text-wrap: balance; max-width: 12em; }
-h2 { font: 400 34px/1.1 var(--display); letter-spacing: -0.02em; text-wrap: balance; max-width: 14em; }
+h1 { font: 400 var(--t-h1)/1 var(--display); letter-spacing: -0.03em; text-wrap: balance; }
+h2 { font: 400 var(--t-h2)/1.02 var(--display); letter-spacing: -0.028em; text-wrap: balance; }
 h3 { font: 500 20px/1.3 var(--display); letter-spacing: -0.005em; text-wrap: balance; }
-.body { margin-top: var(--s3); font-size: 16px; line-height: 1.6; color: var(--ink-2); max-width: 34em; text-wrap: pretty; }
-.eyebrow { font: 500 14px/1.4 var(--sans); letter-spacing: 0.01em; color: var(--steel); }
-.standfirst { margin-top: var(--s3); font-size: 16px; line-height: 1.6; color: var(--ink-2); max-width: 34em; text-wrap: pretty; }
-.cue { margin-top: var(--s4); font: 400 14px/1.4 var(--sans); color: var(--steel); }
+.body, .standfirst { margin-top: var(--s4); font-size: var(--t-body); line-height: 1.5; color: var(--ink-2); max-width: 26em; text-wrap: pretty; }
 
 /* ---------- 1. the hero (not pinned; orbit controls live here only) ---------- */
-/* phone: the sphere in a fixed band under the header, the words after it, so the primary action sits inside the first
-   iPhone Safari screen (its bottom at or above 650 px at 390 x 844) */
-.hero { display: flex; flex-direction: column; padding: var(--head) var(--mr) var(--s5) var(--m); }
-.sphere-slot { order: -1; flex: none; height: 232px; }
-.hero-words { max-width: 600px; }
-h1 { margin-top: var(--s2); }
-.hero .actions { margin-top: var(--s4); }
-.hero .actions .btn { flex: 1 1 auto; }
+/* phone: the sphere fills the space under the header, bleeding off the right edge; the words sit at the foot of the
+   first screen, so the primary action is inside it */
+.hero { display: flex; flex-direction: column; min-height: 100svh; padding: calc(var(--head) + var(--safe-t)) var(--mr) var(--s5) var(--m); }
+.sphere-slot { order: -1; flex: 1 1 auto; min-height: 240px; }
+.hero-words { flex: none; }
+.hero .actions { margin-top: var(--s5); align-items: center; column-gap: var(--s4); }
+.hero .actions .btn { flex: 1 1 100%; }
+.actions .text-link { font-size: 17px; }
 
 /* pinned scenes: the section is the scroll length, the stage sticks for it (CSS sticky: no pin spacer, and no jump
    when the iOS toolbar collapses, because svh never changes) */
 .js .pinned { height: calc(var(--len) * 100svh); }
 .stage { position: relative; display: flex; flex-direction: column;
-  padding: var(--s4) var(--mr) calc(var(--safe-br) + env(safe-area-inset-bottom, 0px)) var(--m); }
+  padding: calc(var(--safe-t) + var(--s3)) var(--mr) calc(var(--safe-br) + var(--safe-b)) var(--m); }
 .js .stage { position: sticky; top: 0; height: 100svh; overflow: hidden; }
-.stage .art { flex: 1 1 auto; min-height: 30svh; }
+.stage .art { flex: 1 1 auto; min-height: 34svh; }
 .stage .words { flex: 0 0 auto; }
 
-/* scene 2: five layers, one lit at a time (all five are in the list; the rest wait in the same cell) */
-.lead-in { margin-top: var(--s3); font: 500 17px/1.45 var(--display); color: var(--ink); max-width: 30em; text-wrap: balance; }
-.layers { list-style: none; margin-top: var(--s4); display: grid; gap: var(--s4); }
-.layers li { padding-top: var(--s3); border-top: 1px solid var(--rule); }
+/* scene 2: five layers. Phone: the line, then the lit layer in its place; desktop: the callouts beside the bands */
+.layers { list-style: none; display: grid; gap: var(--s4); margin-top: var(--s4); }
+/* each layer's line opens with its name (v3-r2, from v1): "Apps and products. Web, iPhone and Android ..." */
+.layers p { color: var(--ink-2); font-size: var(--t-body); line-height: 1.5; max-width: 26em; text-wrap: pretty; }
+.layers strong { font-weight: 500; color: var(--ink); }
 .js .layers { gap: 0; }
 .js .layers li { grid-area: 1 / 1; }
-.layers li p { margin-top: var(--s2); color: var(--ink-2); font-size: 16px; line-height: 1.55; max-width: 32em; text-wrap: pretty; }
 .band-names { position: absolute; left: 0; top: 0; width: 0; height: 0; }
-.band-names span { position: absolute; left: 0; top: 0; width: max-content; font: 500 14px/1.25 var(--sans); color: var(--steel);
-  will-change: transform, opacity; }
-.band-names span.lit { color: var(--ink); }
+.band-names > span { position: absolute; left: 0; top: 0; width: max-content; display: block; will-change: transform, opacity; }
+.band-names b { display: block; font: 500 14px/1.3 var(--sans); color: var(--ink-2); transition: color 200ms ease; }
+.band-names i { display: none; font-style: normal; }
+.band-names > span.lit b { color: var(--ink); }
 
-/* scene 3: the body, then the three facts (on a phone they take the same place, one after the other) */
-.beats { display: grid; gap: var(--s4); }
+/* scene 3: the line, then the proof set like a specification */
+.beats { display: grid; gap: var(--s5); }
 .js .beats { gap: 0; }
 .js .beats > * { grid-area: 1 / 1; }
-.facts { list-style: none; margin-top: var(--s3); display: grid; gap: 0; }
-.fact { display: block; width: 100%; min-height: 44px; padding: var(--s3) 0; text-align: left; background: none; border: 0;
-  border-top: 1px solid var(--rule); color: var(--ink); font: 400 16px/1.4 var(--sans); cursor: pointer; border-radius: 0;
-  text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 5px; transition: text-decoration-color 160ms ease; }
-.fact:hover { text-decoration-color: var(--quiet-line); }
-.fact:active { color: var(--ink-2); }
-.fact:focus-visible { outline-offset: 2px; }
-.fact .fig { display: block; font: 400 26px/1.15 var(--mono); letter-spacing: -0.02em; color: var(--ink); white-space: nowrap;
+.facts { list-style: none; margin-top: var(--s4); display: grid; border-top: 1px solid var(--rule); }
+/* a specification on every screen: the figure in a fixed column, its caption beside it on the same baseline */
+.fact { display: grid; grid-template-columns: 8.5rem minmax(0, 1fr); column-gap: var(--s3); align-items: baseline; width: 100%; min-height: 44px; padding: 14px 0; text-align: left;
+  background: none; border: 0; border-bottom: 1px solid var(--rule); color: var(--ink); font: inherit; cursor: pointer; border-radius: 0; }
+.fact .fig { display: block; font: 400 28px/1.05 var(--display); letter-spacing: -0.02em; color: var(--ink); white-space: nowrap;
   font-variant-numeric: tabular-nums lining-nums; }
-.fact .cap { display: block; margin-top: var(--s2); font: 400 16px/1.4 var(--sans); color: var(--ink-2); }
-.src { padding: 0 0 var(--s3); font: 400 14px/1.6 var(--sans); color: var(--steel); }
+.fact .cap { display: block; font: 400 15px/1.4 var(--sans); color: var(--ink-2);
+  text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 5px; transition: text-decoration-color 160ms ease; }
+.fact:hover .cap { text-decoration-color: var(--quiet-line); }
+.fact:active .cap { color: var(--ink); }
+.fact:focus-visible { outline-offset: 2px; }
+.src { padding: var(--s2) 0 var(--s3); font: 400 12px/1.6 var(--mono); letter-spacing: 0; color: var(--steel); }
+/* the proof: our figures, then the platform under them (C14), in one place, one at a time */
+.proof { display: grid; gap: var(--s5); }
+.js .proof { gap: 0; }
+.js .proof > * { grid-area: 1 / 1; }
+.platform { margin-top: var(--s4); padding-top: var(--s4); border-top: 1px solid var(--rule); align-self: start; }
+.platform h3 { font: 400 26px/1.1 var(--display); letter-spacing: -0.015em; color: var(--ink); }
+.platform .body { margin-top: var(--s3); }
+/* the platform's small print: Google Cloud's audits, named as Google Cloud's (PLATFORM.md) */
+.certs { margin-top: var(--s3); max-width: 30em; font-size: 15px; line-height: 1.5; color: var(--steel); text-wrap: pretty; }
+.platform .text-link { margin-top: var(--s1); font-size: 15px; }
 
-/* scene 4: two beats in one place */
+/* scene 4 (and scene 2's phone swap): two beats in one place */
 .swap { display: grid; gap: var(--s5); }
 .js .swap { gap: 0; }
-.js .swap > div { grid-area: 1 / 1; }
-.swap .text-link { margin-top: var(--s2); }
+.js .swap > * { grid-area: 1 / 1; }
+.swap .text-link { margin-top: var(--s3); }
 
-/* scene 6: how we work, scrolling; the spine runs down the gutter and branches to each step */
-.work { padding: var(--gap) var(--mr) var(--gap) var(--m); }
-.steps { list-style: none; margin-top: var(--s6); display: grid; gap: var(--s6); }
+/* scene 6: how we work. Desktop: the four steps beside the sphere, the active one in ink, the rest in Steel (both AA).
+   Phone (v3-r3): the headline at the top, then the track of the four names with a bar under the active one, then that
+   step's line, one at a time in one place; the sphere (300 px at 874 high, 55%) in the lower half under them */
+.steps { list-style: none; margin-top: var(--s4); display: grid; gap: var(--s4); }
 .steps li { position: relative; }
-.steps p { margin-top: var(--s2); color: var(--ink-2); max-width: 32em; text-wrap: pretty; }
-.work-art { height: 0; }
+.steps h3 { font: 400 34px/1.05 var(--display); letter-spacing: -0.02em; transition: color 220ms ease; }
+.steps p { margin-top: var(--s2); color: var(--ink-2); font-size: var(--t-body); line-height: 1.5; max-width: 24em; text-wrap: pretty; transition: color 220ms ease; }
+.js .steps li:not(.on) h3, .js .steps li:not(.on) p { color: var(--steel); }
+.step-track { display: none; }
+@media (max-width: 959px) {
+  /* v3-r3: the words at the top, the sphere in the lower half (page.js POSES[6]) */
+  .js .work .stage { justify-content: flex-start; padding-top: calc(var(--safe-t) + 56px); }
+  .js .work .stage .art { flex: 0 0 0; min-height: 0; }
+  .js .step-track { position: relative; display: flex; gap: var(--s4); margin-top: var(--s5); padding-bottom: 12px; border-bottom: 1px solid var(--rule); }
+  .step-track span { font: 500 17px/1.2 var(--sans); color: var(--steel); transition: color 200ms ease; }
+  .step-track span.on { color: var(--ink); }
+  .step-track .bar { position: absolute; left: 0; bottom: -1px; height: 2px; width: 0; background: var(--ink);
+    transition: transform 260ms cubic-bezier(0.2, 0, 0, 1), width 260ms cubic-bezier(0.2, 0, 0, 1); }
+  .js .steps { gap: 0; margin-top: var(--s4); }
+  .js .steps li { grid-area: 1 / 1; }
+  .js .steps h3 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .js .steps p { margin-top: 0; }
+  .js .steps li:not(.on) p { color: var(--ink-2); }
+}
 
-/* 7. the close: the mark the field condenses into, then the words, centred on the page's axis (U31) */
+/* 7. the close: the mark the field condenses into, the line (on screen from the first frame), the buttons, and the
+   footer, all inside the last screen; centred on the page's axis (U31) */
 .close { justify-content: center; padding-left: var(--s4); padding-right: var(--s4); }
-.close-in { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 4svh; width: 100%; max-width: 100%; }
+.close-in { display: flex; flex-direction: column; align-items: center; text-align: center; width: 100%; max-width: 100%; }
 .final { color: var(--ink); }
 .final .lk { flex-direction: column; gap: var(--s3); }
 .final .mark { width: 72px; height: 72px; }
 .final .wm { font-size: 26px; line-height: 1; }
-.close .line { margin-top: var(--s5); font-size: 34px; max-width: 11em; }
-.nw { white-space: nowrap; }
-.close .actions { margin-top: var(--s5); justify-content: center; }
-
-/* round 8: the close is round 4's again by default (M25): on desktop the mark beside the wordmark, one lockup centred
-   on the page's axis, the line and buttons centred under it; phones stack it. ?close=centred keeps the round 6 close
-   (Yuan's stacked lockup at every size, U31). The steps arrive a little further down, so the any-size push-in has room
-   to hold on the full sphere (Yuan, 8 Oct). */
-.js .work { padding-top: calc(var(--gap) + 8svh); }
-@media (min-width: 960px) {
-  [data-close="lockup"] .final .lk { flex-direction: row; gap: 32px; }
-  [data-close="lockup"] .final .mark { width: 96px; height: 96px; }
-  [data-close="lockup"] .final .wm { font-size: 56px; letter-spacing: 0.04em; }
-  [data-close="lockup"] .close .line { margin-top: var(--s6); }
-}
-
-/* footer: clear of the bottom-right corner */
-.foot { position: relative; z-index: 2; padding: var(--s5) var(--safe-br) calc(var(--s6) + var(--safe-br) + env(safe-area-inset-bottom, 0px)) var(--m);
-  display: grid; gap: var(--s2); justify-items: start; }
-.legal { font-size: 14px; color: var(--steel); }
+.close .line { margin-top: var(--s5); max-width: 9em; }
+.close .actions { margin-top: var(--s5); justify-content: center; align-items: center; column-gap: var(--s4); flex-direction: column; row-gap: var(--s2); }
+@media (min-width: 600px) { .close .actions { flex-direction: row; } }
+/* phones: the close is one centred column, the footer in the flow under it (each footer row narrower than the screen
+   less two 72 px corners, so the bottom right stays clear without a 72 px pad) */
+@media (max-width: 959px) { .js .stage.close { padding-bottom: calc(var(--s3) + var(--safe-b)); } }
+.close-in { flex: 1 1 auto; justify-content: center; }
+.foot { flex: none; display: flex; flex-direction: column; align-items: center; text-align: center; margin-top: var(--s4); }
+.foot .ours { flex-direction: column; row-gap: var(--s2); }
+.foot .prods { flex-direction: column; row-gap: 12px; }
+.legal { font-size: 14px; line-height: 1.5; color: var(--steel); }
 .legal a { display: inline-flex; align-items: center; min-height: 44px; color: var(--ink-2); text-underline-offset: 4px; }
 .legal a:hover { color: var(--ink); }
-/* review only: the scheme switch, a quiet segmented control */
-.schemes { margin-top: var(--s4); display: flex; flex-wrap: wrap; align-items: center; gap: 0; }
-.schemes legend { float: left; width: 100%; margin-bottom: var(--s2); font-size: 14px; color: var(--steel); }
-.schemes label { position: relative; display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; font-size: 14px;
-  color: var(--ink-2); border: 1px solid var(--quiet-line); margin-left: -1px; cursor: pointer; transition: background-color 160ms ease, color 160ms ease; }
-.schemes label:first-of-type { margin-left: 0; border-radius: 2px 0 0 2px; }
-.schemes label:last-of-type { border-radius: 0 2px 2px 0; }
-.schemes label:hover { background: var(--wash); color: var(--ink); }
-.schemes input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; margin: 0; cursor: pointer; }
-.schemes label:has(input:checked) { background: var(--ink); color: var(--ground); border-color: var(--ink); z-index: 1; }
-.schemes label:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; z-index: 2; }
+/* our own products (C14, B59): each product's own lockup, black and white, its green period blinking as brand styling
+   (no status claim); the files' exact colours: white on Graphite, Graphite on light with a white counter */
+.ours { display: flex; flex-wrap: wrap; align-items: center; column-gap: var(--s4); row-gap: var(--s2); }
+.prods { list-style: none; display: flex; flex-wrap: wrap; align-items: center; column-gap: var(--s4); row-gap: 12px; }
+.prod { display: flex; align-items: center; gap: 8px; min-height: 20px; color: #FFFFFF; }
+.prod .pm { display: block; width: 20px; height: 20px; flex: none; }
+.prod .pm .o { fill: #FFFFFF; }
+.prod .pm .i { fill: #15171A; }
+.pw { font: 500 12.5px/1 "Saira", var(--sans); font-stretch: 125%; letter-spacing: 0.14em; white-space: nowrap; }
+.pw .dot { display: inline-block; width: 5px; height: 5px; margin-left: 1px; background: #4BF097; animation: hb-blink 1.1s steps(1) infinite; }
+@keyframes hb-blink { 50% { opacity: 0; } }
+/* The three chat dots roll as a wave, one after the other (brands/README.md, hb-dot): up 2.4 px at the
+   20 px mark at 36%, at rest at 0, 72 and 100%, 1.25 s, delays 0, .15 and .3 s. The lift is in each
+   mark's own viewBox units: 2.4 x 32 / 20 for Hey Pharmacist, 2.4 x 624 / 20 for Hey Broker. */
+.prod .pm-hp { --lift: 3.84px; }
+.prod .pm-hb { --lift: 74.88px; }
+.prod .pm .d { animation: hb-dot 1.25s ease-in-out infinite; }
+.prod .pm .d2 { animation-delay: .15s; }
+.prod .pm .d3 { animation-delay: .3s; }
+@keyframes hb-dot { 0%, 72%, 100% { transform: translateY(0); } 36% { transform: translateY(calc(-1 * var(--lift))); } }
+:root[data-theme="light"] .prod { color: #15171A; }
+:root[data-theme="light"] .prod .pm .o { fill: #15171A; }
+:root[data-theme="light"] .prod .pm .i { fill: #FFFFFF; }
+:root[data-theme="light"] .pw .dot { background: #12924F; }
+.reduced .pw .dot, .reduced .prod .pm .d { animation: none; }
+html:not(.js) .close { min-height: 100svh; padding-bottom: var(--s8); }
 
-@media (max-width: 959px) { .js .pinned[data-scene="7"] { height: calc(1.7*100svh); } }
-@media (max-width: 359px) { .top .talk { display: none; } }
+/* v3-r5 (review finding 3): 0.4 of a screen longer, so the glowing mark holds for 40vh of scroll before the wordmark */
+@media (max-width: 959px) { .js .pinned[data-scene="7"] { height: calc(2.1*100svh); } }
+@media (max-width: 959px) and (max-height: 720px) {
+  .final .mark { width: 56px; height: 56px; }
+  .close .line, .close .actions { margin-top: var(--s4); }
+  .foot { margin-top: var(--s3); }
+}
+@media (max-width: 359px) { .top .talk { display: none; } .fact { grid-template-columns: minmax(0, 1fr); row-gap: var(--s1); } }
+/* short phones (an iPhone SE): smaller display and a shorter art slot, so the hero's two actions and every stage's words
+   fit the screen */
+@media (max-width: 959px) and (max-height: 700px) {
+  :root { --t-h1: 40px; --t-h2: 40px; }
+  .sphere-slot { min-height: 168px; }
+  .hero { padding-bottom: var(--s4); }
+  .hero .actions { margin-top: var(--s4); }
+  .body, .standfirst { margin-top: var(--s3); }
+  .stage .art { min-height: 26svh; }
+}
+@media (max-width: 959px) and (max-height: 600px) {
+  :root { --t-h1: 34px; --t-h2: 34px; }
+  .stage .art { min-height: 20svh; }
+  .facts .fact { padding: 10px 0; grid-template-columns: 7.5rem minmax(0, 1fr); }
+  .fact .fig { font-size: 24px; }
+}
 @media (min-width: 430px) { .hero .actions .btn { flex: 0 1 auto; } }
 
-/* ---------- desktop: twelve columns; the spine at the centre gutter splits the page ---------- */
+/* ---------- desktop: twelve columns; the words take five, the sphere the other side ---------- */
 @media (min-width: 960px) {
   .top { padding: 0 var(--m); }
   .top .lk { gap: 14px; }
@@ -315,56 +385,80 @@ h1 { margin-top: var(--s2); }
   .top .wm { font-size: 20px; }
   .top-end { gap: var(--s3); }
 
-  h1 { margin-top: var(--s3); font-size: 48px; line-height: 1.04; letter-spacing: -0.025em; max-width: 11em; }
-  h2 { font-size: 48px; line-height: 1.04; letter-spacing: -0.025em; }
-  .body { font-size: 17px; max-width: 28em; }   /* 60 to 68 characters a line, measured */
-  .eyebrow { font-size: 17px; font-weight: 400; letter-spacing: 0; }
+  h1 { line-height: 0.96; letter-spacing: -0.035em; }
+  h2 { line-height: 0.98; letter-spacing: -0.032em; }
+  .body, .standfirst { max-width: 24em; }
 
-  /* the hero: words in columns 1 to 6, the sphere in 7 to 12 */
-  .hero { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gut); align-items: center;
-    min-height: 100svh; padding: var(--head) var(--m) var(--s6); }
-  .hero-words { grid-column: 1 / span 6; max-width: none; padding-bottom: var(--s5); }
-  .standfirst { margin-top: var(--s4); font-size: 20px; line-height: 1.55; max-width: 29em; }
-  .hero .actions { margin-top: var(--s5); gap: var(--s3); }
+  /* the hero: the words in columns 1 to 7, the sphere bleeding off the right edge (its frame comes from page.js) */
+  .hero { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gut); align-content: center;
+    min-height: 100svh; padding: var(--head) var(--m) var(--s7); }
+  .hero-words { grid-column: 1 / span 7; }
+  .hero .actions { gap: var(--s3); }
   .hero .actions .btn { flex: 0 0 auto; }
-  .cue { margin-top: var(--s5); }
-  .sphere-slot { order: 0; position: absolute; top: var(--head); bottom: var(--s4); right: var(--m); left: calc(50vw + var(--gut)/2); height: auto; }
+  .sphere-slot { order: 0; position: absolute; inset: 0; min-height: 0; }
 
-  /* pinned scenes: words in five columns beside the spine, the art in the other half */
+  /* pinned scenes: the words in five columns; columns 6 and 7 stay clear between them and the art */
   .stage { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gut); align-items: center; padding: 0 var(--m); }
-  .stage .art { position: absolute; top: var(--s5); bottom: var(--s5); min-height: 0; }
+  .stage .art { position: absolute; inset: 0; min-height: 0; }
   html:not(.js) .stage { min-height: 100svh; }
-  .stage .words { grid-row: 1; padding-bottom: var(--s4); }
+  .stage .words { grid-row: 1; }
   .words-left .words { grid-column: 1 / span 5; }
   .words-right .words { grid-column: 8 / span 5; }
-  .words-left .art { left: calc(50vw + var(--gut)/2); right: var(--m); }
-  .words-right .art { left: var(--m); right: calc(50vw + var(--gut)/2); }
-  .layers li p { font-size: 17px; }
-  .lead-in { font-size: 20px; }
-  .band-names span { font-size: 17px; font-weight: 400; }
-  .js .beats > * { grid-area: auto; }
+
+  /* scene 2 on desktop: the lit layer's line sits in its callout beside the band; the list stays for screen readers */
+  .layer-swap .layers { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .js .layer-swap .beat-a { opacity: 1 !important; transform: none !important; }
+  .band-names b { font-size: 17px; font-weight: 500; }
+  .band-names i { display: block; margin-top: var(--s1); max-width: 17em; font: 400 17px/1.45 var(--sans); color: var(--ink-2);
+    opacity: 0; transform: translateY(4px); transition: opacity 260ms ease, transform 260ms cubic-bezier(0.2, 0, 0, 1); }
+  .band-names > span.lit i { opacity: 1; transform: none; transition-delay: 240ms, 240ms; }
+  .band-names i { transition-duration: 200ms, 200ms; }
+  /* a screen too short for a line under every band's name: the callouts carry the names only, and the lit layer's line
+     sits in the words under the body, one at a time (page.js sets data-callouts) */
+  [data-callouts="names"] .band-names i { display: none; }
+  [data-callouts="names"] .layer-swap .layers { position: static !important; width: auto; height: auto; overflow: visible; clip: auto;
+    white-space: normal; margin-top: var(--s5); }
+  .js[data-callouts="names"] .layer-swap > * { grid-area: auto; }
+  [data-callouts="names"] .layers p { font-size: 20px; }
+
+  /* scene 3: the line, then the figures as a specification (the figure large, its caption beside it), then the
+     platform: one at a time in one place under the headline */
   .facts { margin-top: var(--s5); }
+  .platform { margin-top: var(--s5); padding-top: var(--s5); }
+  .platform h3 { font-size: 34px; letter-spacing: -0.02em; }
+  .certs { font-size: 16px; }
+  .fact { grid-template-columns: 14rem minmax(0, 1fr); align-items: baseline; column-gap: var(--s4); padding: 20px 0; }
+  .fact .fig { font-size: 48px; letter-spacing: -0.03em; }
+  @media (max-height: 820px) { .fact .fig { font-size: 40px; } .fact { padding: 16px 0; } .platform h3 { font-size: 28px; } }
   .fact .cap { font-size: 17px; }
 
-  .work { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gut); padding: var(--gap) var(--m); }
-  .work-in { display: contents; }
-  .work h2 { grid-column: 1 / span 5; align-self: start; position: sticky; top: 22svh; max-width: 11em; }
-  .steps { grid-column: 8 / span 5; margin-top: 0; gap: var(--s7); padding: 12svh 0 18svh; }
-  .steps h3 { font-size: 26px; }
-  .steps p { font-size: 17px; }
-  .work-art { position: absolute; }
+  .steps { margin-top: var(--s5); gap: var(--s4); }
+  .steps h3 { font-size: 34px; letter-spacing: -0.02em; }
+  .steps p { margin-top: var(--s1); font-size: 18px; }
+  @media (max-height: 820px) { .steps { margin-top: var(--s4); gap: var(--s3); } .steps h3 { font-size: 28px; } .steps p { font-size: 17px; } }
 
-  .close-in { grid-column: 1 / -1; }
+  .close-in { grid-column: 1 / -1; margin-top: -6svh; }
   .final .lk { gap: var(--s4); }
   .final .mark { width: 104px; height: 104px; }
   .final .wm { font-size: 34px; }
-  .close .line { font-size: 48px; max-width: 16em; }
-
-  .foot { grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gut); align-items: start; padding-right: var(--m); }
-  .foot > .legal { grid-column: 1 / span 5; }
-  .schemes { grid-column: 8 / span 5; grid-row: 1 / span 2; margin-top: 0; }
+  .close .line { margin-top: var(--s6); max-width: none; font-size: 64px; letter-spacing: -0.03em; }
+  .close .actions { gap: var(--s3); }
+  .foot { position: absolute; left: var(--m); right: var(--safe-br); bottom: var(--s4); margin: 0; flex-direction: row; flex-wrap: wrap;
+    align-items: center; text-align: left; column-gap: var(--s4); row-gap: 0; }
+  .foot .ours { flex-direction: row; margin-left: auto; column-gap: var(--s4); }
+  .foot .prods { flex-direction: row; column-gap: var(--s4); }
 }
-@media (min-width: 1200px) { h1 { font-size: 64px; } }
+@media (min-width: 960px) {
+  /* ?close=centred (U31, Yuan, for Tim's pick): the mark 120 px stacked over the wordmark at 40 px, centred on the page's
+     axis; the gap leaves about 16 px of air between the lowest band and the capitals (the mark's box has 13 px of its
+     own under the bands) */
+  [data-close="centred"] .final .lk { flex-direction: column; align-items: center; gap: 0; }
+  [data-close="centred"] .final .mark { width: 120px; height: 120px; }
+  [data-close="centred"] .final .wm { font-size: 40px; margin-top: -3px; letter-spacing: 0.04em; }
+  [data-close="lockup"] .final .lk { flex-direction: row; gap: 32px; }
+  [data-close="lockup"] .final .mark { width: 96px; height: 96px; }
+  [data-close="lockup"] .final .wm { font-size: 56px; letter-spacing: 0.04em; }
+}
 
 /* ---------- reduced motion: no pinning; each scene is a still of its pose beside its words ---------- */
 .js.reduced .pinned { height: auto; }
@@ -376,23 +470,31 @@ h1 { margin-top: var(--s2); }
 .js.reduced .layers { gap: var(--s4); }
 .js.reduced .layers li { grid-area: auto; }
 .js.reduced .beats, .js.reduced .swap { gap: var(--s5); }
-.js.reduced .beats > *, .js.reduced .swap > div { grid-area: auto; }
+.js.reduced .beats > *, .js.reduced .swap > *, .js.reduced .proof > * { grid-area: auto; }
+.js.reduced .proof { gap: var(--s5); }
 .reduced #field, .reduced .spine { display: none; }
-.reduced .hero .sphere-slot { position: relative; height: 300px; }
-.reduced .close { padding-bottom: var(--gap); }
-.reduced .work-art { display: none; }
+.reduced .hero .sphere-slot { position: relative; height: 300px; flex: none; }
+.reduced .close { padding-bottom: calc(var(--gap) + var(--s8)); }
+.js.reduced .steps { gap: var(--s4); }
+.js.reduced .steps li { grid-area: auto; }
+.js.reduced .steps li:not(.on) h3 { color: var(--ink); } .js.reduced .steps li:not(.on) p { color: var(--ink-2); }
+.js.reduced .step-track { display: none; }
+.js.reduced .steps h3 { position: static; width: auto; height: auto; overflow: visible; clip: auto; white-space: normal; }
+.js.reduced .steps p { margin-top: var(--s2); }
+.js.reduced .work .stage .art { flex: none; }
 @media (min-width: 960px) {
   .reduced .stage .art { grid-row: 1; width: 100%; max-width: 520px; margin: 0; justify-self: center; }
   .reduced .words-left .art { grid-column: 7 / span 6; }
   .reduced .words-right .art { grid-column: 1 / span 6; }
-  .reduced .hero .sphere-slot { position: absolute; height: auto; }
+  .reduced .hero .sphere-slot { position: absolute; inset: var(--head) var(--m) var(--s6) 58%; height: auto; }
+  .reduced .layer-swap .layers { position: static !important; width: auto; height: auto; overflow: visible; clip: auto; white-space: normal; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .btn, .text-link, .fact, #field, .mode, .mode * { transition: none; }
+  .pw .dot, .prod .pm .d { animation: none; }
+  .btn, .text-link, .fact, #field, .mode, .mode *, .band-names i { transition: none; }
   .js .pinned, .js .pinned[data-scene] { height: auto; }
   .js .stage { position: relative; top: auto; height: auto; overflow: visible; }
 }
 
-/* without JavaScript the band names have nowhere to sit, and the switches do nothing */
-html:not(.js) .band-names, html:not(.js) .schemes, html:not(.js) .mode { display: none; }
+html:not(.js) .band-names, html:not(.js) .mode { display: none; }
