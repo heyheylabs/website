@@ -16,11 +16,11 @@ cp "$D"/index.html "$D"/page.css "$D"/*.js "$D"/mark.svg docs/
 # v3-r5 vendors its fonts (OFL, latin) and reads two logos from the design folder's shared assets/
 if [ -d "$D/fonts" ]; then mkdir -p docs/fonts && cp "$D"/fonts/*.woff2 "$D"/fonts/*.css docs/fonts/; fi
 if [ -d "$D/wordmark" ]; then mkdir -p docs/wordmark && cp "$D"/wordmark/*.svg docs/wordmark/; fi
-if grep -q '\.\./\.\./assets/' "$D/index.html"; then
-  mkdir -p docs/assets
-  for f in $(grep -oE '\.\./\.\./assets/[A-Za-z0-9._-]+' "$D/index.html" | sort -u); do cp "$R/${f#../../}" docs/assets/; done
-  sed -i.bak 's|\.\./\.\./assets/|assets/|g' docs/index.html && rm docs/index.html.bak
-fi
+# shared files two folders up: assets/ (logos, nested by vendor) and stack/ (the Built on Asimov Cloud module)
+for f in $(grep -oE '\.\./\.\./(assets|stack)/[A-Za-z0-9._/-]+' "$D/index.html" | sort -u); do
+  rel="${f#../../}"; mkdir -p "docs/$(dirname "$rel")"; cp "$R/$rel" "docs/$rel"
+done
+sed -i.bak -e 's|\.\./\.\./assets/|assets/|g' -e 's|\.\./\.\./stack/|stack/|g' docs/index.html && rm docs/index.html.bak
 cp "$R"/favicon.svg docs/
 cp "$D"/vendor/*.js docs/vendor/
 # This repo's own files: robots.txt, sitemap.xml, llms.txt, .well-known/security.txt, og.jpg, the icon set

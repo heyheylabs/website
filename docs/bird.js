@@ -8,7 +8,10 @@
 // the pillar's foot. On top of r5: two lives (M27). Loop 0, 2, 4 ... is life A, the flame phoenix (r5's Phoenix flame
 // ramp); loop 1, 3 ... is life B, the rainbow fenghuang. The rebirth at the top pole is where one becomes the other.
 //
-// v3-r5 (Fri 9 Oct 2026): fh10 PORTED (tools/port-fh10.py, on port-fh9.py): fh10's geometry block whole and its
+// v3-r5 (Fri 9 Oct 2026): gen4 PORTED (tools/port-gen4.py): fh11 with genome v4: the continuous rebirth's bead, the
+// body gene, fh11's fold and tuck (M40, B66).
+// v3-r5: gen3 PORTED (tools/port-gen3.py): genome v3 on fh10, the genes per viewer (M36).
+// v3-r5: fh10 PORTED (tools/port-fh10.py, on port-fh9.py): fh10's geometry block whole and its
 // build-fh10.mjs hunks for the passes and the rig (both lives' heads, crests, eyes; the body and neck light; the flame
 // tail 1.2 bodies; both birds 1.3 times on a phone).
 // v3-r5: fh9 PORTED (tools/port-fh9.py, on port-fh8.py): fh8's geometry block whole; its look, point and stroke
@@ -92,11 +95,30 @@ vec3 vaneB(float r1, float r2, float r3, float nb, float slant){
 // flaring as it unfolds), uHeadK (the head's scale about the skull; 1.45 on a phone)
 uniform float uHold, uWOpen, uFlare, uHeadK;
 uniform float uFh;
+// gen2 (M36): THE GENOME, as gen1 plus the shape genes (review gen1, High 1). Nine vec4s set once per draw by the
+// adapter (geneVec); GENE_NEUTRAL gives fh9's bird exactly.
+//   uG[0] A: span, primaries, plume length, middle plume   uG[1] A: bars, bar depth, crest length, heat
+//   uG[2] B: span, primaries, plume length, inner plumes   uG[3] B: eye mask, eye size, crest plumes (2 or 3), crest length
+//   uG[4] B: crest rise, spectrum spread (signed), lightness, chroma   uG[5] B light: crest, eyes, edges, tips
+//   uG[6] the lift; A: fingered (1) or pointed (0), fingers, neck   uG[7] B: fingered, fingers, neck; A crest plumes (2 to 4)
+//   uG[8] shape genes on (1) or fh9's bird (0)
+uniform vec4 uG[9];
+float gSpan(){ return mix(uG[0].x, uG[2].x, uFh); }
+float gEyeBit(float k){ return mod(floor(uG[3].x/exp2(k - 1.0) + 1e-3), 2.0); }
+float gFinger(){ return mix(uG[6].y, uG[7].x, uFh); }
+float gNFing(){ return mix(uG[6].z, uG[7].y, uFh); }
+float gNeck(){ return mix(uG[6].w, uG[7].z, uFh); }
+// gen4 (review gen3, top fix 3): the rainbow bird's body length, 0.85 to 1.2. The torso (the tail's root, z -0.36, to the
+// neck's root, z 0.20) stretches along the bird's axis; everything ahead of it (neck, head, crest) and behind it (tail
+// coverts, plumes) moves with its end, so nothing parts
+float gBody(){ return uG[8].y > 0.01 ? mix(1.0, uG[8].y, uFh) : 1.0; }
+float bodyZ(float z){ float b = gBody(); return z < -0.36 ? z + (b - 1.0)*(-0.36) : (z > 0.20 ? z + (b - 1.0)*0.20 : z*b); }
+float gCrestN(){ return uFh > 0.5 ? uG[3].z : uG[7].w; }
 float gSpec = 0.0, gCore = 0.0, gEye = 0.0, gEdge = 0.0, gSpark = 0.0, gHead = 0.0, gSkull = 0.0, gHi = 0.0;
 float gWing = -1.0, gFlr = 0.0;   // fh9: gWing, where a wing point sits shoulder (0) to tip (1), -1 off the wing; gFlr, the rebirth flare's points (crest tips, plume eyes)   // fh8 (M35): gHi, the fenghuang's hot highlights (crest tips, plume eyes, the wing's leading edge)
    // fh7: gSkull, the skull and beak alone   // fh4: gSpark marks the eye's one spark; gHead the head, neck and crest   // fh3: gEdge, where the fenghuang's plumes and crest tips sparkle
 const float PI = 3.14159265;
-vec3 headPos(){ return mix(vec3(0.0, 0.135, 0.54), vec3(0.0, 0.33, 0.585), uFh); }   // fh3: the fenghuang carries its head high on an upright neck
+vec3 headPos(){ vec3 P0 = vec3(0.0, 0.03, 0.20); return P0 + (mix(vec3(0.0, 0.135, 0.54), vec3(0.0, 0.33, 0.585), uFh) - P0)*gNeck(); }   // gen2: the neck gene   // fh3: the fenghuang carries its head high on an upright neck
 vec3 bdir(float sweep, float elev){ return vec3(cos(elev)*cos(sweep), sin(elev), -cos(elev)*sin(sweep)); }
 vec3 pathAt(float s){                              // the flight path behind the bird, s local units back from its centre
   float k = clamp(s/uPathStep, 0.0, 6.999); int i = int(k); float f = k - float(i);
@@ -135,17 +157,18 @@ float featherFade(float u){ return 1.0 - smoothstep(0.85, 1.0, u); }      // eve
 float rootFade(float u){ return smoothstep(0.0, 0.15, u); }              // flight feathers rise out of the coverts, no hard root line
 void bones(float ph, out vec3 sh, out vec3 el, out vec3 wr, out vec3 tp, out vec3 dH, out float fold){
   float e = sin(ph), rising = cos(ph);
-  fold = mix(1.0, max(smoothstep(-0.2, 0.9, rising)*0.7*uAmp, uTuck), uWOpen);   // folds at the wrist on the upstroke; born folded (fh9: opens in 0.5 s)
-  float th = mix(0.34 + 0.62*e*uAmp, 0.12, uTuck);     // a raised V plus the beat; swept low and back for the dive
+  fold = mix(1.0, min(max(smoothstep(-0.2, 0.9, rising)*0.7*uAmp, uTuck), mix(1.0, 0.4, smoothstep(0.0, 0.08, uTuck))), uWOpen);   // fh11: in the dive the upstroke folds the wrist to 0.4 at most   // folds at the wrist on the upstroke; born folded (fh9: opens in 0.5 s)
+  float th = mix(0.34 + 0.62*e*uAmp, 0.220, uTuck);   // fh11: swept less low in the dive (fh10 0.12; &diveth=)     // a raised V plus the beat; swept low and back for the dive
   // fh9 (review fh8, top fix 1): in life B's long glide the wings are held raised and spread: 35 degrees of dihedral,
   // open at the wrist, the beat reduced to a slow breath, so the hero frame reads as fh7's fanned bird
   fold = mix(fold, 0.0, uHold); th = mix(th, 0.61 + 0.05*e, uHold);
   sh = vec3(0.07, 0.035, 0.10);
   float wk = mix(1.0, 1.12, uFh);                     // fh8 (M35): the fenghuang's arm and hand 12% longer: a wider span
-  el = sh + bdir(-0.15 + 0.40*fold, th)*0.30*wk;
-  wr = el + bdir(0.12 + 0.80*fold, th + 0.18*(1.0 - 0.75*uHold)*sin(ph - 0.7))*0.40*wk;
+  float gs = gSpan();                                 // gen1: the wing's span gene scales arm and hand
+  el = sh + bdir(-0.15 + 0.40*fold, th)*0.30*wk*gs;
+  wr = el + bdir(0.12 + 0.80*fold, th + 0.18*(1.0 - 0.75*uHold)*sin(ph - 0.7))*0.40*wk*gs;
   dH = bdir(0.32 + 1.0*fold, th + 0.40*(1.0 - 0.75*uHold)*sin(ph - 1.2));  // the hand lags the arm
-  tp = wr + dH*0.38*wk;
+  tp = wr + dH*0.38*wk*gs;
 }
 // the leading edge as one smooth curve: Catmull-Rom through shoulder, elbow, wrist and tip (t 0 to 3), arcing a little
 // forward, so the roots of the flight feathers and the marginal coverts never line up on a ruler-straight bone
@@ -172,8 +195,9 @@ vec3 chainDir(int base, int n, float x){             // fh2: the chain's directi
 // a long pheasant plume, like the two feathers on Sun Wukong's cap: its rachis is the simulated chain
 vec3 spine(float s, float kk){ return chainAt(kk < 0.0 ? 0 : 28, 28, (s - 0.3)/max(plumeLen(kk), 1e-3)*27.0); }
 float plumeUnf(){ return mix(0.06, 1.0, smoothstep(0.4, 1.0, uUnfurl)); }   // fh8: how far the tail's plumes have unfurled (length, 0.06 to 1)
-float plumeLen(float kk){ return (kk > 0.0 ? 1.24 : 1.14)*mix(0.06, 1.0, smoothstep(0.4, 1.0, uUnfurl)); }   // unfurl last
+float plumeLen(float kk){ return (kk > 0.0 ? 1.24 : 1.14)*uG[0].z*mix(0.06, 1.0, smoothstep(0.4, 1.0, uUnfurl)); }   // unfurl last
 float barred(float u, float n){ float b = fract(u*n); return 0.45 + 0.55*smoothstep(0.08, 0.22, b)*(1.0 - smoothstep(0.58, 0.72, b)); }
+float barredA(float u){ float b = fract(u*uG[1].x); return (1.0 - uG[1].y) + uG[1].y*smoothstep(0.08, 0.22, b)*(1.0 - smoothstep(0.58, 0.72, b)); }   // gen1: life A's bars
 vec3 crestWave(float u, float kk){ return vec3(sin(u*4.0 - uT*2.6 + kk*1.3), 0.6*sin(u*3.2 - uT*2.1 + kk), 0.0)*0.05*u*u; }
 // Every feather is a function of (which feather, uv on it): u along the shaft, v across the vane (-1 leading, +1
 // trailing), and a weight. The particle pass samples them at random; the stroke pass walks them as hairlines (the rachis,
@@ -187,10 +211,14 @@ vec3 wingF(float grp, float i, float side, vec3 uv, float flap, out vec4 info){
     bones(flap - 0.55*uv.x*fi - 0.2 - 0.12*uv.x*uv.x, sh, el, wr, tp, dH, fold);   // the tips lag the hand: secondary motion
     vec3 N = normalize(cross(dH, vec3(0.0, 0.0, -1.0)));
     float psi = (0.20 + (1.05 + 0.35*spread)*fi)*(1.0 - 0.5*fold);
+    // gen2 (review gen1, High 1): the wingtip is pointed (the primaries closed up, the outer ones longest: a falcon's
+    // blade) or fingered (the outer 5 to 7 slotted apart, narrower, so the tip opens into fingers: an eagle's)
+    float fg = gFinger(), slot = fg*step((10.0 - gNFing())/9.0 - 0.01, fi), gon = uG[8].x;
+    psi *= mix(1.0, mix(0.66, 1.0 + 0.42*slot, fg), gon);
     vec3 D = normalize(cos(psi)*vec3(0.0, 0.0, -1.0) + sin(psi)*dH);
-    float L = mix(0.50 + 0.46*pow(fi, 0.7), 0.56 + 0.58*pow(fi, 0.8), uFh)*(1.0 - 0.12*fold)*(0.95 + 0.10*fjit(i*1.7 + 0.3));   // the fenghuang's primaries run longer
+    float L = mix(0.50 + 0.46*pow(fi, 0.7), 0.56 + 0.58*pow(fi, 0.8), uFh)*(1.0 - 0.12*fold)*(0.95 + 0.10*fjit(i*1.7 + 0.3))*mix(uG[0].y, uG[2].y, uFh)*mix(1.0, mix(0.80 + 0.42*fi*fi, 1.0 - 0.05*slot, fg), gon);   // the fenghuang's primaries run longer (gen2: the primaries gene, the tip's form)
     vec3 B = vec3(0.0, 0.0, -0.10) - N*(0.16*rising + 0.05*sin(flap - 1.6)) + N*0.03*sin(uT*8.0 + i*1.7)*uv.x;   // air bends the shaft
-    p = feather(armAt(2.04 + 0.92*pow(fi, 0.9), sh, el, wr, tp), D, N, B, L, mix(0.13, 0.15, uFh), uv);
+    p = feather(armAt(2.04 + 0.92*pow(fi, 0.9), sh, el, wr, tp), D, N, B, L, mix(0.13, 0.15, uFh)*(1.0 - 0.6*slot*gon), uv);
     gSpec = 0.13 + 0.25*uv.x + 0.12*fi;                 // leading edge to trailing tips, and a step on per finger
     gWing = clamp(0.50 + 0.22*fi + 0.30*uv.x*(0.35 + 0.65*fi), 0.0, 1.0);   // fh9: the primaries carry the cool end, blue at the outer tip
     p += N*(0.012*uv.y*uv.y*uv.x*sin(uT*19.0 + uv.x*11.0 + i*2.3 + uv.y*3.0));   // the vane's edge flutters in the airflow
@@ -239,10 +267,10 @@ vec3 crestB(float k, float u, out vec3 T){
   // fh9 (review fh8, High 1; gen1 top fix 3): three long fine plumes swept back from the crown, the upper one 40 degrees
   // over the line of the skull, the lower 18 (about 30 on average), each a little longer than the one under it, so side
   // on they read as three separate lines and never as a fan, a comma or a glow; they sway one after another
-  float sd = k < 0.5 ? -1.0 : (k > 3.5 ? 1.0 : 0.0), j = k < 0.5 ? 0.0 : (k > 3.5 ? 2.0 : 1.0);
-  float L = mix(0.36, 0.28, j*0.5)*mix(0.867, 1.0, uFh)*mix(1.0, uHeadK, 0.6)*mix(0.25, 1.0, max(smoothstep(0.2, 0.85, uUnfurl), uWOpen));
+  float sd = clamp((k - 2.0)*0.5, -1.0, 1.0), j = clamp(k*0.5, 0.0, 2.0);   // gen2: k 0 to 4 across the crest
+  float L = mix(0.36, 0.28, j*0.5)*mix(0.867*uG[1].z, uG[3].w, uFh)*mix(1.0, uHeadK, 0.6)*mix(0.25, 1.0, max(smoothstep(0.2, 0.85, uUnfurl), uWOpen));
   vec3 R = headPos() + vec3(sd*0.010, 0.026 - 0.004*j, -0.020)*uHeadK;   // fh5: rooted in the skull, not on it
-  float an = mix(0.70, 0.32, j*0.5) + 0.3*(1.0 - uFh);   // fh10
+  float an = mix(0.70, 0.32, j*0.5)*mix(1.0, uG[4].x, uFh) + 0.3*(1.0 - uFh);   // gen3
   vec3 d = normalize(vec3(sd*mix(0.22, 0.10, uFh), sin(an), -cos(an)));
   vec3 c = R + L*(d*u + vec3(0.0, -0.30, -0.06)*u*u + vec3(0.0, 0.10, 0.0)*u*u*u);
   T = normalize(d + vec3(0.0, -0.60, -0.12)*u + vec3(0.0, 0.30, 0.0)*u*u + vec3(0.0, 0.0, -1e-5));
@@ -251,20 +279,24 @@ vec3 crestB(float k, float u, out vec3 T){
 vec3 crestF(float k, vec3 uv, out vec4 info){
   // fh8 (review fh7, High 1): lc, the crest's unfurl. Both lives' folded crests (a quarter of their length at full width,
   // end on at the rebirth) were a bright block at the throat; now it is narrower in proportion and its light follows its area
-  float lc = mix(0.25, 1.0, max(smoothstep(0.2, 0.85, uUnfurl), uWOpen*uFh)), u = uv.x, L = 1.30*lc;   // fh9: the fenghuang's crest opens with its wings, so it can flare at the rebirth
+  float lc = mix(0.25, 1.0, max(smoothstep(0.2, 0.85, uUnfurl), uWOpen*uFh)), u = uv.x, L = 1.30*uG[1].z*lc;   // gen1: crest length gene; fh9: the fenghuang's crest opens with its wings, so it can flare at the rebirth
   float m = k/4.0, inner = step(0.5, k)*step(k, 3.5), mm = step(0.5, m);
   vec3 c0 = chainAt(56, 16, u*15.0), c1 = chainAt(72, 16, u*15.0);
   vec3 cA = mix(c0, c1, mm), TA = normalize(mix(chainDir(56, 16, u*15.0), chainDir(72, 16, u*15.0), mm) + vec3(0.0, 0.0, -1e-5));
   cA += plumeBow(TA, L, u);
   vec3 TB, cB = crestB(k, u, TB);
-  // fh10 (review fh9, High 1): life A's crest is three swept-back plumes too (fh9 drew its two long simulated plumes)
+  // gen2 (review gen1, High 2): life A's crest grows 2, 3 or 4 plumes: the two long simulated ones always (M14), and
+  // one or two short swept-back plumes between them, drawn as the fenghuang's (crestB) at 0.7 of its length
+  // gen3 (review gen2, High 2): both lives' crests are swept-back plumes (crestB): 2, 3 or 4 for the flame bird, 2 or 3 for
+  // the fenghuang (gen2 kept life A's two long simulated plumes)
+  float cn = gCrestN(), cv = (k < 0.5 || k > 3.5) ? 1.0 : (cn > 3.5 ? step(0.5, abs(k - 2.0)) : (cn > 2.5 ? step(abs(k - 2.0), 0.5) : 0.0));
   vec3 c = cB, T = normalize(TB + vec3(0.0, 0.0, -1e-5));
   vec3 P = normalize(cross(T, vec3(0.0, 0.0, 1.0)) + vec3(0.0, 0.0, 0.2));
   // fh4: both lives' crests are the tail's slender plume in small: a fine vane tapering to a point, barred like the tail
   float w = sqrt(lc)*(mix(0.016, 0.012, uFh)*(0.55 + 0.45*smoothstep(0.0, 0.08, u))*pow(1.0 - u, 0.7) + 0.002)*mix(1.0, 0.85 + 0.3*sin(PI*u), uFh);   // fh5: the fenghuang's crest starts full on the head
-  float vis = 1.0;   // fh10: three plumes in both lives
+  float vis = cv;   // gen3: which crest plumes this bird has
   float tip = uFh*smoothstep(0.62, 0.92, u)*(1.0 - smoothstep(0.97, 1.0, u));   // the curled tips catch the light
-  info = vec4(3.0, 0.45 + 0.55*u, u*u*0.5 + 0.35*tip, lc*sqrt(lc)*smoothstep(0.25, 0.55, lc)*vis*uv.z*mix(1.05, 1.0, uFh)*mix(barred(u, 22.0), 0.8 + 0.2*barred(u, 22.0), uFh)*mix(featherFade(u), 1.0, tip)*(1.0 + 0.25*tip));
+  info = vec4(3.0, 0.45 + 0.55*u, u*u*0.5 + 0.35*tip, lc*sqrt(lc)*smoothstep(0.25, 0.55, lc)*vis*uv.z*mix(1.05, 1.0, uFh)*mix(barredA(u), 0.8 + 0.2*barred(u, 22.0), uFh)*mix(featherFade(u), 1.0, tip)*(1.0 + 0.25*tip*uG[5].x));
   gSpec = 0.92 + 0.22*u + 0.03*(k - 2.0); gEye = 0.0; gEdge = tip; gHi = 0.55*tip; gFlr = uFh*smoothstep(0.55, 1.0, u);
   gWing = uFh > 0.5 ? 0.02 + 0.16*u : -1.0;   // fh9: the crest in the warm end, vermilion to gold, its tips white-gold (never violet, B29)
   return c + P*uv.y*w;
@@ -286,27 +318,31 @@ vec3 tcovF(float k, vec3 uv, out vec4 info, float flap){   // tail coverts: shor
 // rings of the spectrum), the other two in flame points that waver. k 0 and 6 are the outer pair; the inner three are
 // k 1 to 3 (m 0.25, 0.5, 0.75 across the fan).
 float plumeLenK(float k){ return k < 0.5 || k > 5.5 ? 1.0 : (abs(k - 2.0) < 0.5 ? 0.76 : 0.86); }
+// gen1: with 4 or 5 inner plumes the fan keeps the profile: the middle shortest (0.76), the sides longer
+float plumeLenG(float k, float m){ return uG[2].w < 3.5 ? plumeLenK(k) : (k < 0.5 || k > 5.5 ? 1.0 : 0.76 + 0.40*abs(m - 0.5)); }
 vec3 plumeAt(float x, float mm){ return mix(chainAt(0, 28, x), chainAt(28, 28, x), mm); }
 vec3 plumeF(float k, vec3 uv, out vec4 info, float flap){
-  float mA = k/6.0, mB = k > 5.5 ? 1.0 : k/4.0, m = mix(mA, mB, uFh);
-  float inner = step(0.5, k)*step(k, 5.5), lk = mix(1.0, plumeLenK(k), uFh), mm = mix(step(0.5, mA), mB, uFh);
+  // gen1: B's inner plumes are k 1 to uG[2].w (3 to 5) across the fan; life A may grow a shorter middle plume
+  float nIn = uG[2].w, midK = uG[0].w*(1.0 - step(0.5, abs(k - 2.0)));
+  float mA = mix(k/6.0, 0.5, midK), mB = k > 5.5 ? 1.0 : k/(nIn + 1.0), m = mix(mA, mB, uFh);
+  float inner = step(0.5, k)*step(k, 5.5), lk = mix(mix(1.0, 0.72, midK), plumeLenG(k, mB), uFh), mm = mix(mix(step(0.5, mA), 0.5, midK), mB, uFh);
   // fh8 (review fh7, High 1): lf is how far the plume has unfurled. fh7 folded the full plume's particles and barbs into
   // 6% of its length at the full width, so at every rebirth the tail's root was a solid hard-edged block (a rainbow swatch
   // at night, an ink slab by day). Now a folded plume is narrower in proportion and carries light in proportion to its
   // area, so its density per pixel never rises above the open plume's; it grows out of the seed's soft light
   float lf = mix(0.06, 1.0, smoothstep(0.4, 1.0, uUnfurl)), lfA = lf*sqrt(lf)*smoothstep(0.06, 0.3, lf);
-  float L = mix(mix(1.14, 1.24, mm), ${(3.4*TAIL_PHB).toFixed(3)}, uFh)*lf*lk, u = uv.x, x = u*lk*27.0;
+  float L = mix(mix(1.14, 1.24, mm)*uG[0].z, 3.4*uG[2].z, uFh)*lf*lk, u = uv.x, x = u*lk*27.0;
   float fan = 1.0 - abs(2.0*m - 1.0);
   vec3 lift = vec3(0.0, 0.10*fan*u*u, 0.0)*uFh;
   vec3 c = plumeAt(x, mm) + lift, T = normalize(mix(chainDir(0, 28, x), chainDir(28, 28, x), mm) + vec3(0.0, 0.20*fan*u, 0.0)*uFh*L/27.0 + vec3(0.0, 0.0, -1e-5));
   c += plumeBow(T, L, u);
   vec3 P = normalize(cross(vec3(0.0, 1.0, 0.0), T));
   vec3 Q = normalize(cross(T, P));
-  float eye = (k < 0.5 || k > 5.5 || abs(k - 2.0) < 0.5) ? 1.0 : 0.0, flame = 1.0 - eye;
+  float eye = (k < 0.5 || k > 5.5) ? 1.0 : gEyeBit(k), flame = 1.0 - eye;   // gen1: the outer pair always, the inner by the eye mask
   // fh7 (M34; fh8 M35 raised its amplitudes from 0.045 and 0.035 to 0.065 and 0.05): each inner plume rides the outer pair's silk plus its own travelling wave, the same wave as the chains'
   // rest pose (across on the slow clock and half the wingbeat, up and down on the beat) but phase-lagged 0.45 rad per
   // plume, so the five plumes undulate one after another like ribbons and never move as one sheet
-  { float lag = (k - 2.0)*0.45 + 0.3, A = L*pow(u, 1.25);
+  { float lag = (k - 0.5*(nIn + 1.0))*0.45 + 0.3, A = L*pow(u, 1.25);
     c += P*(0.065*inner*A*sin(6.2832*1.05*u - (0.55*flap + 1.25*uT) + lag))*uFh;
     c += Q*(0.05*inner*A*sin(6.2832*0.9*u - flap - 0.6 + lag*0.8))*uFh; }
   // fh8 (review fh7, finding 2): every plume, the outer pair included, carries one more travelling wave (period 1.4 s,
@@ -320,13 +356,14 @@ vec3 plumeF(float k, vec3 uv, out vec4 info, float flap){
     c += E*(m - 0.5)*2.0*0.123*L*u*uFh; }
   c += P*(0.022*flame*smoothstep(0.6, 1.0, u)*sin(u*24.0 - uT*6.5 + k*2.1))*uFh;          // flame points waver
   float w0 = (mix(0.12, 0.092, uFh)*smoothstep(0.0, 0.05, u)*pow(1.0 - u, 0.6) + 0.004)*sqrt(lf);   // fh7: the fenghuang's long plumes are slender (fh6 0.15 on a 1.82 plume)
-  float UE = mix(0.87, 0.91, uFh), RE = mix(0.08, 0.05, uFh);   // fh7: on the longer plume the eye keeps its size (0.16 of 1.82 then, 0.10 of 3.4 now)
+  float eR = mix(1.0, uG[3].y, uFh);                  // gen1: the eye's size
+  float UE = mix(0.87, 0.91, uFh), RE = mix(0.08, 0.05, uFh)*eR;   // fh7: on the longer plume the eye keeps its size (0.16 of 1.82 then, 0.10 of 3.4 now)
   float ez = (u - UE)/RE, eyeK = eye*uFh;
-  float wE = 0.078*sqrt(max(1.0 - ez*ez, 0.0))*sqrt(lf);
+  float wE = 0.078*eR*sqrt(max(1.0 - ez*ez, 0.0))*sqrt(lf);
   float w = mix(w0, w0*mix(1.0, 0.55, smoothstep(0.55, 0.78, u)), eyeK);                 // the eye plumes thin to a bare shaft
   w = max(w, wE*eyeK);
   w = mix(w, w*pow(max(1.0 - u, 0.0), 0.35), flame*uFh);                                  // flame plumes taper finer
-  float bar = mix(barred(u, 22.0), 0.8 + 0.2*barred(u, 22.0), uFh);
+  float bar = mix(barredA(u), 0.8 + 0.2*barred(u, 22.0), uFh);
   float ring = 1.0, er = length(vec2(ez, uv.y*w/max(wE, 1e-3)));
   gEye = 0.0;
   if (eyeK > 0.0 && abs(ez) < 1.0) {                                                      // the eye: core, a dark gap, a ring
@@ -336,10 +373,10 @@ vec3 plumeF(float k, vec3 uv, out vec4 info, float flap){
   float tipFade = 1.0 - eyeK*smoothstep(UE + RE*0.85, UE + RE*1.25, u);
   gHi = eyeK*(abs(ez) < 1.0 ? (er < 0.38 ? 1.0 : (er > 0.56 && er < 0.8 ? 0.45 : 0.0)) : 0.0);   // fh8: each eye's core blazes, its ring glints
   gFlr = gHi;
-  ring *= 1.0 + 0.7*eyeK*step(abs(ez), 1.0)*exp(-er*er*6.0);                              // fh3: a soft inner glow in each eye
-  gEdge = uFh*smoothstep(0.78, 0.96, abs(uv.y))*smoothstep(0.08, 0.3, u)*(1.0 - eyeK*step(abs(ez), 1.0));   // silk edges
-  float vis = mix(1.0 - inner, 1.0, uFh);
-  info = vec4(5.0, 0.3 + 0.6*u, u*u*0.25 + 0.15*(1.0 - bar) + 0.35*flame*uFh*smoothstep(0.85, 1.0, u),
+  ring *= 1.0 + 0.7*uG[5].y*eyeK*step(abs(ez), 1.0)*exp(-er*er*6.0);                              // fh3: a soft inner glow in each eye
+  gEdge = uFh*uG[5].z*smoothstep(0.78, 0.96, abs(uv.y))*smoothstep(0.08, 0.3, u)*(1.0 - eyeK*step(abs(ez), 1.0));   // silk edges
+  float vis = mix(1.0 - inner + midK, 1.0, uFh);
+  info = vec4(5.0, 0.3 + 0.6*u, u*u*0.25 + 0.15*(1.0 - bar) + 0.35*uG[5].w*flame*uFh*smoothstep(0.85, 1.0, u),
               vis*uv.z*(uv.z > 0.9 ? 1.45 : 1.15)*bar*featherFade(u)*ring*tipFade*max(lfA, 0.7*uFlare*eyeK*step(abs(ez), 1.0)*step(er, 0.38)));   // fh9: the plume eyes' cores light first, in the flare, before the plumes unfurl
   gSpec = 0.40 + 0.62*u + (m - 0.5)*0.10;
   return c + P*uv.y*w;
@@ -366,6 +403,7 @@ vec3 neckF(float row, float col, vec3 uv, out vec4 info){
   vec3 H = headPos();
   float t = (row + 0.5)/10.0, it = 1.0 - t;
   vec3 P0 = vec3(0.0, 0.03, 0.20), P1 = mix(vec3(0.025, -0.06, 0.34), vec3(0.02, -0.02, 0.37), uFh), P2 = mix(vec3(-0.02, 0.19, 0.37), vec3(-0.02, 0.36, 0.44), uFh), P3 = H + vec3(0.0, -0.004, -0.045*uHeadK);   // fh10: the neck runs into the skull, never short of it
+  P1 = P0 + (P1 - P0)*gNeck(); P2 = P0 + (P2 - P0)*gNeck();   // gen2: the neck gene
   vec3 c = it*it*it*P0 + 3.0*it*it*t*P1 + 3.0*it*t*t*P2 + t*t*t*P3;
   vec3 tg = normalize(3.0*it*it*(P1 - P0) + 6.0*it*t*(P2 - P1) + 3.0*t*t*(P3 - P2));
   float a = (col + 0.5 + 0.5*mod(row, 2.0))/10.0*2.0*PI, rr = mix(mix(0.065, 0.038, t), mix(0.078, 0.047, t), uFh);   // fh8 (review fh7, 5): the fenghuang's neck fuller (fh7 0.060 to 0.030), a phoenix's ruff, not an egret's
@@ -380,17 +418,16 @@ vec3 neckF(float row, float col, vec3 uv, out vec4 info){
 const float HEAD_L = 0.16, BEAK_L = 0.10;
 // fh9 (review fh8, High 1): life B's head is three readable parts. The skull 0.13 (fh8 0.16), the beak 0.9 of it
 // (0.117, fh8 0.056), closed, full at the root and hooked to a hard tip; the eye a third of the skull behind the beak
-float headL(){ return mix(0.12, 0.13, uFh); }   // fh10: life A's skull 0.12 (fh9 0.16), round, not a cone
+float headL(){ return mix(0.12, 0.13, uFh); }   // gen2: life A's skull 0.12 (fh9 0.16), round, not a cone
 // fh6: the fenghuang's beak is short, 35% of the skull's length (0.056 against 0.16; A keeps 0.10), full at its root
 // and drawn to a fine point that hooks down at the tip; HSPLIT: where along the head the beak starts
-float beakL(){ return mix(0.065, 0.117, uFh); }   // fh10: life A's beak 0.35 of its head (0.065 of 0.185)
+// gen2 (review gen1, High 2): life A's beak 0.35 of the skull (0.056, fh9 0.10), full at its root
+float beakL(){ return mix(0.065, 0.117, uFh); }   // gen3: life A's beak 0.35 of its head (0.065 of 0.185; gen2 0.32)
 float headSplit(){ return headL()/(headL() + beakL()); }
 vec3 headPt(float s, float a, float rho, out float r){
   float HL = headL(), bl = beakL(), z = s*(HL + bl), sb = max(z - HL, 0.0)/bl;
   float zq = z/HL;                                 // fh5: the fenghuang's skull is domed (full to the brow, then the beak), not a cone
-  // fh10 (review fh9, High 1): life A's skull is domed and round, 1.5 times the beak's base (0.036 against 0.024), the beak full
-  // at its root and closed, with a slight droop
-  r = z < HL ? mix(max(0.034*sqrt(max(1.0 - (zq - 0.5)*(zq - 0.5)/0.3136, 0.0)), 0.024*smoothstep(0.55, 1.0, zq))*sqrt(smoothstep(0.0, 0.02, z)), (0.017 + 0.030*(1.0 - zq*zq*zq))*sqrt(smoothstep(0.0, 0.045, z)), uFh) : 0.024*pow(max(1.0 - sb, 0.0), 0.8);
+  r = z < HL ? mix(max(0.034*sqrt(max(1.0 - (zq - 0.5)*(zq - 0.5)/0.3136, 0.0)), 0.024*smoothstep(0.55, 1.0, zq))*sqrt(smoothstep(0.0, 0.02, z)), (0.017 + 0.030*(1.0 - zq*zq*zq))*sqrt(smoothstep(0.0, 0.045, z)), uFh) : mix(0.024*pow(max(1.0 - sb, 0.0), 0.8), 0.024*pow(max(1.0 - sb, 0.0), 0.8), uFh);
   float dro = mix(0.010*sb*sb, 0.003*sb*sb + 0.020*pow(sb, 6.0), uFh);   // fh6: B's culmen curves down into a hook (fh9: a firmer hook at the tip)
   vec3 ax = vec3(0.0, 0.006 - dro, -0.075 + z);
   return headPos() + (ax + vec3(cos(a)*r*rho, sin(a)*r*rho*0.9, 0.0))*uHeadK;
@@ -443,7 +480,7 @@ vec3 torsoMass(vec3 h, out vec4 info){
 vec3 wispPt(vec2 c, float hz, out vec4 info){
   float hx = fract(sin(dot(c + 41.7, vec2(12.9898, 78.233)))*43758.5453), hy = fract(sin(dot(c + 43.9, vec2(12.9898, 78.233)))*43758.5453);
   if (hx < 0.55) return wingF(0.0, 7.0 + floor(hy*2.999), hx < 0.275 ? -1.0 : 1.0, vec3(0.84 + 0.16*hz, 0.0, 1.0), uFlap, info);
-  float k = uFh > 0.5 ? (hy < 0.5 ? (hy < 0.25 ? 0.0 : 6.0) : 1.0 + floor((hy - 0.5)*5.999)) : (hy < 0.5 ? 0.0 : 6.0);
+  float k = uFh > 0.5 ? (hy < 0.5 ? (hy < 0.25 ? 0.0 : 6.0) : 1.0 + floor((hy - 0.5)*2.0*(uG[2].w - 0.0005))) : (hy < 0.5 ? 0.0 : 6.0);
   return plumeF(k, vec3(0.78 + 0.22*hz, 0.0, 1.0), info, uFlap);
 }
 vec3 birdPoint(vec3 h, float flap, out vec4 info){
@@ -478,7 +515,7 @@ vec3 birdPoint(vec3 h, float flap, out vec4 info){
     }
     gCore = mix(0.85, 0.5, uFh); gSpec = 1.06; gSpark = 0.0; gHead = 1.0; gSkull = 1.0;   // fh4: THE HEAD, one tapered form; and the eye's one spark (fh5: B's skull in colour, so the white-hot eye reads)
     if (fract(q*40.0) < 0.05) {
-      float side = uViewL.x < 0.0 ? -1.0 : 1.0, r; vec3 c = headPt(mix(0.0645, 0.13*2.0/3.0, uFh)/(headL() + beakL()), 0.0, 0.0, r);   // fh10: A's eye 0.3 of its head behind the beak's base   // fh6: B's eye forward on the skull, near the beak's root (A's stays 0.07 from the back)
+      float side = uViewL.x < 0.0 ? -1.0 : 1.0, r; vec3 c = headPt(mix(0.0645, 0.13*2.0/3.0, uFh)/(headL() + beakL()), 0.0, 0.0, r);   // gen3: A's eye 0.3 of its head behind the beak's base   // gen2: A's eye 0.3 of the head behind the beak   // fh6: B's eye forward on the skull, near the beak's root (A's stays 0.07 from the back)
       info = vec4(2.0, 0.1, 1.0, 1.6); gCore = 1.0; gSpark = 1.0;
       return c + vec3(side*r*0.86, 0.36*r, 0.0)*uHeadK;
     }
@@ -490,12 +527,14 @@ vec3 birdPoint(vec3 h, float flap, out vec4 info){
   }
   if (x < 0.61) {                                      // crest: the outer two, and the inner three as the fenghuang grows them
     float q = (x - 0.56)/0.05, qa = fract(q*7.31), k;
-    if (q < 0.67) k = qa < 0.5 ? 0.0 : 4.0; else k = 2.0;   // fh10: the middle plume in both lives   // fh3: the fenghuang's middle crest plume
+    float cn = gCrestN(), csh = cn > 3.5 ? 0.45 : (cn > 2.5 ? 0.33 : 0.0);   // gen2: 2 to 4 crest plumes
+    if (q < 1.0 - csh) k = qa < 0.5 ? 0.0 : 4.0; else k = cn > 3.5 ? (fract(q*5.13) < 0.5 ? 1.0 : 3.0) : 2.0;
     gHead = 1.0; return crestF(k, vane(fract(q*13.0), h.y, h.z, 26.0, 0.04), info); }
   if (x < 0.65) { float qi = (x - 0.61)/0.04*7.0; return tcovF(floor(qi), vane(fract(qi), h.y, h.z, 7.0, 0.06), info, flap); }
   if (x < 0.92) {                                      // tail: the outer pair, and the inner five as the fenghuang grows them
     float q = (x - 0.65)/0.27, qa = fract(q*9.17), k;
-    if (q < 1.0 - uFh*0.6) k = qa < 0.5 ? 0.0 : 6.0; else k = 1.0 + floor(qa*2.999);   // fh3: three inner plumes
+    float shr = max(uFh*0.6, uG[0].w*0.22*(1.0 - uFh));   // gen1: life A's middle plume takes 22% of the tail's sparks
+    if (q < 1.0 - shr) k = qa < 0.5 ? 0.0 : 6.0; else k = fract(q*3.71) < uG[0].w*(1.0 - uFh) ? 2.0 : 1.0 + floor(qa*(uG[2].w - 0.001));
     return plumeF(k, vane(fract(q*17.0), h.y, h.z, 44.0, 0.035), info, flap); }
   // FLAME WISPS peeling off the trailing edges and the plumes
   float q = (x - 0.92)/0.08, age = fract(h.y + uT*0.55);
@@ -532,13 +571,14 @@ vec3 oklch(float L, float C, float hh){
   return pow(clamp(rgb, 0.0, 1.0), vec3(1.0/2.2));
 }
 vec3 spectral(float s){
-  float hh = fract(uHue0 + pow(max(s, 0.0), 1.12)*0.85)*6.2831853;
+  float hh = fract(uHue0 + pow(max(s, 0.0), 1.12)*uG[4].y)*6.2831853;   // gen1: spread and direction
   float yl = exp(-pow((fract(hh/6.2831853 - 0.29 + 0.5) - 0.5)*5.0, 2.0));
-  return oklch(0.71 + 0.12*yl, 0.165 - 0.015*yl, hh);
+  return oklch(uG[4].z + uG[6].x*yl, uG[4].w - 0.015*yl, hh);   // gen1: lightness, chroma, lift
 }
 // a local bird point to the world: the rebirth gathers it out of the top pole (staggered, strand by strand) and the
 // death draws it along the shell into the pillar's foot. wp: how far it is gathered; ab: how far it is drawn in.
 vec3 birdXf(vec3 l, vec4 info, vec3 h, float hk, out float wp, out float ab, out float vis, out float hb){
+  l.z = bodyZ(l.z);   // gen4: the body gene
   float rank = clamp(info.y, 0.0, 1.0)*0.55 + (info.x > 4.5 ? 0.12 : 0.0);
   float g = rank*0.6 + hk*0.18; wp = smoothstep(g, g + 0.26, uForm);
   float bp = clamp(uBurn*2.0, 0.0, 1.0);
@@ -581,12 +621,12 @@ vec3 birdCol(vec4 info, float wp, float ab, float hb, float hk, float hueOff, fl
   vec3 col = birdHue(info, hueOff);
   if (uRb > 0.0) {                                     // the fenghuang: the whole spectrum at once, a white-gold core
     vec3 rc = spectral(spec + hueOff*3.0 + 0.5*eye*step(0.75, eye) + 0.25*eye*step(0.4, eye)*step(eye, 0.6));
-    if (gWing >= 0.0) rc = mix(rc, wingSpec(gWing + hueOff*1.5), 0.92);   // fh9
+    if (gWing >= 0.0) rc = mix(rc, wingSpec((uG[4].y < 0.0 ? 1.0 - gWing : gWing)*abs(uG[4].y)/0.85 + hueOff*1.5), 0.92);   // gen2: the wing grade follows the spectrum   // fh9
     rc = mix(rc, uHot, core*0.8);
-    rc = mix(rc, uHot, 0.45*step(0.99, eye));         // fh3: each eye's core glows white-gold
+    rc = mix(rc, uHot, min(0.45*uG[5].y, 0.8)*step(0.99, eye));   /* gen1 */         // fh3: each eye's core glows white-gold
     col = mix(col, rc, uRb);
   }
-  col = mix(col, uHot, clamp(info.z, 0.0, 1.0)*mix(0.5, 0.22, uRb));
+  col = mix(col, uHot, clamp(info.z*mix(uG[1].w, 1.0, uRb), 0.0, 1.0)*mix(0.5, 0.22, uRb));   // gen1: life A's heat
   col = mix(col, mix(uFl[3], uHot, 0.35 + 0.4*info.y), hb*0.85);
   // fh6: at night the fenghuang's seed is its own spectrum from the first frame (never the field's grey ink)
   col = mix(mix(uInk, uInk2, hk), col, mix(smoothstep(0.0, 0.7, wp)*0.85, 0.75 + 0.25*smoothstep(0.0, 0.7, wp), uRb*uNt));
@@ -642,7 +682,7 @@ void birdVertex(ivec2 c, vec4 s){   // fh5's bird pass (its sparkle along the si
   { float fz = uFlare*gFlr*uFh; vCol.a *= 1.0 + 5.0*fz; vCol.rgb = mix(vCol.rgb, uHot, 0.6*fz); }
   if (gWing >= 0.0) vCol.a *= 1.0 + 0.3*uRb;
   // fh10: the body and neck plumage carry at least 60% of the wings' light, so the head stays joined to the body
-  if (abs(info.x - 2.0) < 0.5 && gSkull < 0.5 && spk < 0.5) vCol.a *= gHead > 0.5 ? mix(NECK_K.x, NECK_K.y, uRb) : mix(BODY_K.x, BODY_K.y, uRb);
+  if (abs(info.x - 2.0) < 0.5 && gSkull < 0.5 && spk < 0.5) vCol.a *= gHead > 0.5 ? mix(NECK_K.x, NECK_K.y, uRb)*max(gNeck(), 1.0)*max(gNeck(), 1.0) : mix(BODY_K.x, BODY_K.y, uRb);   /* gen4 */
   if (abs(info.x - 3.0) < 0.5) vCol.a *= mix(0.3, 0.15 + 0.30*hiP, uRb);   /* fh10: life A's crest is its lines too */   // fh9: no halo by night or day: the crest is its plumes' lines
   { float tw = pow(0.5 + 0.5*sin(uT*5.3 + h.z*157.0 + h.y*41.0), 12.0)*edg*uRb;
     vCol.rgb = mix(vCol.rgb, uHot, 0.55*tw); vCol.a *= 1.0 + 2.4*tw; }
@@ -671,7 +711,7 @@ ${BIRD_LOOK_GLSL}
 out vec4 vCol; out float vD; out float vHw; float vFlag;
 vec3 partPt(float f, vec3 uv, out vec4 info){
   if (uGrp < 3.5) { float side = f < uNF ? -1.0 : 1.0; return wingF(uGrp, mod(f, uNF), side, uv, uFlap, info); }
-  if (uGrp < 4.5) return crestF(f < 0.5 ? 0.0 : (f < 1.5 ? 4.0 : 2.0), uv, info);   // the outer pair first, then the fenghuang's middle
+  if (uGrp < 4.5) return crestF(f < 0.5 ? 0.0 : (f < 1.5 ? 4.0 : (gCrestN() > 3.5 ? (f < 2.5 ? 1.0 : 3.0) : 2.0)), uv, info);   // gen2: the outer pair, then the middle or the two between   // the outer pair first, then the fenghuang's middle
   if (uGrp < 5.5) return tcovF(f, uv, info, uFlap);
   if (uGrp < 6.5) return plumeF(f < 0.5 ? 0.0 : (f < 1.5 ? 6.0 : f - 1.0), uv, info, uFlap);
   if (uGrp < 7.5) return bodyF(floor(f/BODY_COLS), mod(f, BODY_COLS), uv, info);
@@ -732,7 +772,7 @@ void main(){
   a *= mix(1.0 - 0.28*uRb, 3.2, hi0); col = mix(col, uHot, 0.45*hi0);       // fh8 (M35): the light hierarchy, as the sparks
   { float fz = uFlare*fl0*uFh; a *= 1.0 + 5.0*fz; col = mix(col, uHot, 0.6*fz); }   // fh9: the rebirth flare
   if (gWing >= 0.0) a *= 1.0 + 0.3*uRb;
-  if (uGrp > 6.5 && uGrp < 8.5) a *= uGrp > 7.5 ? mix(NECK_K.x, NECK_K.y, uRb) : mix(BODY_K.x, BODY_K.y, uRb);   // fh10: the body's and neck's lines
+  if (uGrp > 6.5 && uGrp < 8.5) a *= uGrp > 7.5 ? mix(NECK_K.x, NECK_K.y, uRb)*max(gNeck(), 1.0)*max(gNeck(), 1.0) : mix(BODY_K.x, BODY_K.y, uRb);   /* gen4 */   // fh10: the body's and neck's lines
   if (uHeadG > 1.5) a *= mix(1.0, 1.5, uNt);   // fh10: both lives                // fh9: life B's beak and head lines read first
   if (uGrp > 3.5 && uGrp < 4.5) a *= mix(1.0, 1.3, uNt);   // fh10: both lives              // fh9: 1.3 (fh8 2.0): fine lines, no glow
   if (uHeadG > 1.5) { a *= mix(1.0, 1.7, uNt); col = mix(col, mix(vec3(1.0, 0.88, 0.70), vec3(0.95, 0.94, 0.98), uFh), 0.5*uNt); }   // fh10: life A's strands warm   // fh7: at night the head's strands, pale light on dark                                               // thinner than a pixel: dimmer, never aliased
@@ -749,7 +789,7 @@ export const STROKES = [
   { grp: 1, nf: 11, count: 22, nb: 22, sr: 12, sb: 2, slant: 0.10, wr: 0.004, wb: 0.0024 , ra: 0.75 },   // secondaries
   { grp: 2, nf: 3, count: 6, nb: 16, sr: 10, sb: 2, slant: 0.10, wr: 0.006, wb: 0.002 },       // tertials
   { grp: 3, nf: 16, count: 32, nb: 8, sr: 6, sb: 2, slant: 0.14, wr: 0.005, wb: 0.002 },       // greater coverts
-  { grp: 4, nf: 3, count: 3, nb: 44, sr: 36, sb: 2, slant: 0.05, wr: 0.006, wb: 0.0018 },      // the crest plumes (two, or three)
+  { grp: 4, nf: 4, count: 4, outer: 2, nb: 44, sr: 36, sb: 2, slant: 0.05, wr: 0.006, wb: 0.0018 },      // the crest plumes (two, or three)
   { grp: 5, nf: 7, count: 7, nb: 12, sr: 8, sb: 2, slant: 0.10, wr: 0.005, wb: 0.002 },        // tail coverts
   { grp: 6, nf: 7, count: 2, nb: 110, sr: 72, sb: 3, slant: 0.035, wr: 0.006, wb: 0.0024 },    // the two outer long plumes
   { grp: 6, nf: 7, count: 3, foff: 2, fh: true, nb: 72, sr: 60, sb: 2, slant: 0.04, wr: 0.0055, wb: 0.0024 },   // the fenghuang's inner three, lighter (fh8: on the 3.4 plume)
@@ -780,7 +820,8 @@ export const BIRD = {
 
 // The flame ramp of life A (ledger B41, r5's "Phoenix"): born blue, then purple, red and gold.
 export const FLAME = {
-  stops: [[0.16, 0.42, 1.00], [0.58, 0.22, 1.00], [1.00, 0.16, 0.22], [1.00, 0.55, 0.10]],
+  // B66 (Tim, 9 Oct: "More red is good"): crimson #D40530, scarlet #EE0B2A, red #FC3C29, gold #FF9D36 (was r5's blue, purple, red, gold)
+  stops: [[0.831, 0.020, 0.188], [0.933, 0.043, 0.165], [0.988, 0.235, 0.161], [1.000, 0.616, 0.212]],
   hot: [1.00, 0.90, 0.65],
   alpha: 0.65,
 };
@@ -790,6 +831,41 @@ const HUE0 = 0.02, WHITE_GOLD = [1.0, 0.94, 0.80];
 function createRig({ phone, period, homeDir }) {
   // fh10: both birds 1.3 times on a phone (the rig's phone flag), the fenghuang's tail 0.75 there
   const PH_K = phone ? 1.3 : 1, TAIL_PHB = phone ? 0.75 : 1;
+  // ==== gen3: THE GENOME ADAPTER (lab/gen3.html; ledger M36). genome.js v3 draws each bird's genes, seeded per viewer in
+  // their own browser (no fingerprint, no server), each load and each rebirth the next in their line; this maps them
+  // onto the bird. Without genome.js (or with ?genes=0) the bird is fh10's own (GENE_NEUTRAL).
+  const PGN = typeof window !== 'undefined' ? window.PhoenixGenome : null, GQ = typeof location !== 'undefined' ? new URLSearchParams(location.search) : new URLSearchParams('');
+  const GENES_ON = !!PGN && GQ.get('genes') !== '0', GENOME_V = 4;   // gen4: genome.js v4 (the body gene; the crimson flame with its Dose-orange check)
+  const VIEWER = GENES_ON ? PGN.viewer(location.search) : { line: '0', load: 1, rebirth0: 0 };
+  const GENE_NEUTRAL = new Float32Array([1, 1, 1, 0,  22, 0.55, 1, 1,  1, 1, 1, 3,  2, 1, 3, 1,  1, 0.85, 0.71, 0.165,  1, 1, 1, 1,  0.12, 0, 6, 1,  0, 6, 1, 2,  0, 0, 0, 0]);
+  const NEUTRAL_A = { plumes: 2, len: 1, curl: 1, crestLen: 1, crestRise: 1, crest: 2, neck: 1, scale: 1 }, NEUTRAL_B = { inner: 3, crest: 3, len: 1, neck: 1, scale: 1 };
+  let GA = NEUTRAL_A, GB = NEUTRAL_B;
+  const isBL = loop => ((loop % 2) + 2) % 2 === 1, genomeMemo = new Map(), vecMemo = new Map();
+  function genomeOf(cycle){ let g = genomeMemo.get(cycle); if (g) return g; g = PGN.genomeFor(VIEWER.line, VIEWER.load, cycle, GENOME_V);
+    if (genomeMemo.size > 16) genomeMemo.clear(); genomeMemo.set(cycle, g); return g; }
+  const cycleOf = loop => VIEWER.rebirth0 + Math.floor(loop/2), aLoopOf = loop => isBL(loop) ? loop - 1 : loop, bLoopOf = loop => isBL(loop) ? loop : loop - 1;
+  function genesAt(loop){ return GENES_ON ? { A: genomeOf(cycleOf(aLoopOf(loop))).lifeA, B: genomeOf(cycleOf(bLoopOf(loop))).lifeB } : { A: NEUTRAL_A, B: NEUTRAL_B }; }
+  function geneVec(loop){
+    if (!GENES_ON) return GENE_NEUTRAL;
+    let v = vecMemo.get(loop); if (v) return v;
+    const { A, B } = genesAt(loop), sp = B.palette.spec, L = B.light;
+    v = new Float32Array([A.span, A.prim, A.len, A.plumes > 2 ? 1 : 0,  A.bars, A.barDepth, A.crestLen, A.heat,
+      B.span, B.prim, B.len*TAIL_PHB, B.inner,  B.eyeMask, B.eyeR, B.crest, B.crestLen,  B.crestRise, sp.spread*sp.dir, sp.L, sp.C,
+      L.crest, L.eyes, L.edges, L.tips,  sp.lift, A.finger, A.fingers, A.neck,  B.finger, B.fingers, B.neck, A.crest,  1, B.body || 1, 0, 0]);   // gen4: uG[8].y, the body
+    if (vecMemo.size > 16) vecMemo.clear(); vecMemo.set(loop, v); return v;
+  }
+  const PH_FIT = phone, fitOf = L => PH_FIT ? 1/Math.max(1, L.scale*Math.pow(L.span, 0.8)*Math.pow(L.prim, 0.3)) : 1;
+  function geneScale(T, fh){ if (!GENES_ON) return PH_K; const { A, B } = genesAt(Math.floor(T/period)); return (A.scale*fitOf(A)*(1 - fh) + B.scale*fitOf(B)*fh)*PH_K; }
+  const geneNeck = fh => GA.neck*(1 - fh) + GB.neck*fh;
+  function useGenes(T){ const g = genesAt(Math.floor(T/period)); GA = g.A; GB = g.B; }
+  // the stroke pass: the crest draws 2 to 4 plumes in life A and 2 or 3 in life B; the tail's inner group 3 to 5 in life B,
+  // and life A's middle plume when it has one
+  function strokeCount(g, fh){
+    if (g.grp === 4) return { n: fh < 0.5 ? GA.crest : GB.crest, foff: 0 };
+    if (g.grp === 6 && g.fh) { if (fh >= 1e-3) return { n: GB.inner, foff: g.foff || 0 }; return GA.plumes > 2 ? { n: 1, foff: 3 } : { n: 0, foff: 0 }; }
+    if (g.fh && fh < 1e-3) return { n: 0, foff: 0 };
+    return { n: g.count, foff: g.foff || 0 };
+  }
   const PATH_STEP = 0.42, BANK = 0.5, FLAT = 0.75, RISE = 0.5, TAIL_MAXA = 0.7, PHONE_K = phone ? 0.8 : 1;
   const LAP = [[0.00, 0, 1.70, 0.0], [0.07, 0.05, 1.85, 0.15], [0.15, 0.6, 1.95, 0.5], [0.24, 1.5, 1.7, 0.7], [0.33, 1.85, 1.05, 0.8],
     [0.42, 1.3, 0.4, 1.4], [0.50, 0.0, 0.8, 1.7], [0.58, -1.4, 1.2, 1.2], [0.66, -1.85, 0.6, 0.6], [0.73, -1.75, -0.55, 0.8],
@@ -871,7 +947,7 @@ function createRig({ phone, period, homeDir }) {
   function flapHz(tau, life = 0){ return flapHzA(tau)*(1 - life) + flapHzB(tau)*life; }
   function flapHzA(tau){ return 0.84 - 0.24*smooth(0.0, 0.04, tau)*(1 - smooth(0.16, 0.26, tau)) - 0.42*smooth(0.40, 0.45, tau)*(1 - smooth(0.52, 0.57, tau)) - 0.30*smooth(0.70, 0.76, tau); }
   function flapAmp(tau){ return 1 + 0.15*smooth(0.06, 0.12, tau)*(1 - smooth(0.2, 0.28, tau)) - 0.68*smooth(0.40, 0.45, tau)*(1 - smooth(0.52, 0.57, tau)); }
-  function flapTuck(tau){ return 0.65*smooth(0.70, 0.77, tau)*(1 - smooth(0.88, 0.95, tau)); }
+  function flapTuck(tau){ return 0.3*smooth(0.70, 0.77, tau)*(1 - smooth(0.88, 0.95, tau)); }
   // The two lives (M27): even loops are life A, odd loops life B. A new life's form and colour turn over while it
   // unfolds (tau 0 to 0.24), out of sight inside the gather; the very first life (loop 0 and before) is A from the start.
   const isBLoop = T => ((Math.floor(T/period) % 2) + 2) % 2 === 1;
@@ -880,6 +956,7 @@ function createRig({ phone, period, homeDir }) {
     return isB ? k : (loop <= 0 ? 0 : 1 - k);
   }
   function at(T, phase = null){
+    useGenes(T);   // gen3: this moment's genes (the chains and the strokes read them)
     const tau = ((T/period) % 1 + 1) % 1, sArc = lapArc(tau), C = lapPoint(sArc);
     const toCam = norm(sub(LAP_EYE, C));
     const vel = sub(lapPoint(sArc + 0.03), lapPoint(sArc - 0.03)); const heading = len(vel) > 1e-4 ? norm(vel) : [0, 1, 0];
@@ -899,7 +976,7 @@ function createRig({ phone, period, homeDir }) {
     const lt = tau*period, wopen = smooth(0.25, 0.75, lt), flare = smooth(0.45, 0.6, lt)*(1 - smooth(0.9, 1.1, lt));
     const hold = (isBLoop(T) ? 1 : 0)*smooth(5.6, 6.1, lt)*(1 - smooth(10.0, 10.5, lt)), headK = phone ? 1.2 : 1;   // fh10: both lives' heads, 1.2 inside the 1.3 times bird
     const b = { hold, wopen, flare, headK, C, F, U, S, V: toCam, sArc, absorb, pullT, unfurl, pulseY: -1.6 + 3.3*pp, pulseA, pp, tau, life, nextB,
-      scale: 0.84*PHONE_K*(1 + 0.4*burn)*(1 + 0.2*life)*PH_K, burn, H: heading, form, flap: ph + 0.4*Math.sin(ph), amp: flapAmp(tau), tuck: flapTuck(tau), T,
+      scale: 0.84*PHONE_K*(1 + 0.4*burn)*(1 + 0.2*life)*geneScale(T, life),   /* gen3: the scale gene */ burn, H: heading, form, flap: ph + 0.4*Math.sin(ph), amp: flapAmp(tau), tuck: flapTuck(tau), T,
       poleD: [0, -1, 0], pole: POLE_IN };
     b.path = pathLocal(b); return b;
   }
@@ -919,12 +996,12 @@ function createRig({ phone, period, homeDir }) {
     return o;
   }
   const LEN_B = 3.4;    // fh7 (fh8): the fenghuang's tail, 3 times its body and head (M34)
-  function plumeLenJS(kk, unfurl, fh){ return ((kk > 0 ? 1.24 : 1.14)*(1 - fh) + LEN_B*TAIL_PHB*fh)*(0.06 + 0.94*smooth(0.4, 1.0, unfurl)); }
+  function plumeLenJS(kk, unfurl, fh){ return ((kk > 0 ? 1.24 : 1.14)*GA.len*(1 - fh) + LEN_B*GB.len*TAIL_PHB*fh)*(0.06 + 0.94*smooth(0.4, 1.0, unfurl)); }
   function restLocal(ch, j, b){                        // the chain's rest shape, in the bird's frame
     const u = j/(ch.n - 1), kk = ch.kk, T = b.T;
     if (ch.crest) {
-      const fh = b.life || 0, H = lerp3([0, 0.135, 0.54], [0, 0.33, 0.585], fh), L = 1.30*(1 - 0.5*fh)*(0.25 + 0.75*smooth(0.2, 0.85, b.unfurl)), R = add(H, [kk*0.022, 0.040, -0.020]);
-      const P1 = add(R, scl([kk*0.05, 0.60, 0.02], L)), P2 = add(R, scl([kk*(0.16 + 0.10*fh), 0.50 + 0.25*fh, -1.00 + 0.15*fh], L));   // the fenghuang's crest stands higher
+      const fh = b.life || 0, H = add([0, 0.03, 0.20], scl(sub(lerp3([0, 0.135, 0.54], [0, 0.33, 0.585], fh), [0, 0.03, 0.20]), geneNeck(fh))), L = 1.30*GA.crestLen*(1 - 0.5*fh)*(0.25 + 0.75*smooth(0.2, 0.85, b.unfurl)), R = add(H, [kk*0.022, 0.040, -0.020]);
+      const P1 = add(R, scl([kk*0.05, 0.60*GA.crestRise, 0.02], L)), P2 = add(R, scl([kk*(0.16 + 0.10*fh), 0.50 + 0.25*fh, -1.00 + 0.15*fh], L));   // the fenghuang's crest stands higher
       const c = add(add(scl(R, (1 - u)*(1 - u)), scl(P1, 2*(1 - u)*u)), scl(P2, u*u));
       c[0] += kk*0.035*Math.sin(Math.PI*u*2);
       c[0] += Math.sin(u*4 - T*2.6 + kk*1.3)*0.025*u*u; c[1] += 0.6*Math.sin(u*3.2 - T*2.1 + kk)*0.025*u*u;
@@ -971,7 +1048,7 @@ function createRig({ phone, period, homeDir }) {
     const wP = PLUME_PATH*(1 - 0.6*fh*(1 - smooth(0.12, 0.45, u)));
     const pa = pathAtJS(b.path, sv), p = add(scl([0, 0, -sv], 1 - wP), scl(pa, wP));
     // life A: two long plumes trailing the path, swept a little to each side
-    const xA = kk*(0.05 + 0.34*uu*uu) + 0.10*kk*Math.sin(Math.PI*uu*1.6), yA = 0.10*Math.sin(Math.PI*uu*1.2) - 0.06*uu;
+    const xA = kk*(0.05 + 0.34*GA.curl*uu*uu) + 0.10*GA.curl*kk*Math.sin(Math.PI*uu*1.6), yA = 0.10*Math.sin(Math.PI*uu*1.2) - 0.06*uu;
     // fh7 (M34), life B: two long slender plumes in a narrow sheaf (9 degrees each side, not a fan), trailing the line the
     // bird flew, a soft S, the tips alone curling up. On that rest shape rides a TRAVELLING WAVE, its amplitude growing
     // toward the tip: across (driven by the slow clock and half the wingbeat, about 2 s a wave) and up and down (driven by
@@ -1082,6 +1159,7 @@ function createRig({ phone, period, homeDir }) {
     set1('uAmp', b.amp); set1('uTuck', b.tuck);
     set3('uBirth', POLE_T); set3('uEye', eye); set1('uPullT', b.pullT); set3('uPoleD', b.poleD); set3('uPoleB', scl(b.poleD, 1.62));
     set1('uHold', b.hold || 0); set1('uWOpen', b.wopen ?? 1); set1('uFlare', b.flare || 0); set1('uHeadK', b.headK || 1);   // fh9
+    if (u['uG[0]']) gl.uniform4fv(u['uG[0]'], geneVec(Math.floor(b.T/period)));   // gen3
     set1('uFh', b.life || 0); set1('uRb', b.life || 0); set1('uHue0', HUE0);
     set1('uNew', ((Math.floor(b.T/period) % 2) + 2) % 2); set1('uNt', night);
     { const v = norm(sub(eye, b.C)); set3('uViewL', [dot(v, b.S), dot(v, b.U), dot(v, b.F)]); }
@@ -1090,7 +1168,21 @@ function createRig({ phone, period, homeDir }) {
     set3('uPulseC', lerp3(f[3], b.nextB ? WHITE_GOLD : f[0], b.pp));
     set1('uBL', 0.9*b.form*(1 - b.absorb)); set3('uBLC', birdLightCol(b));
   }
+  // fh11 (M40, M27): the rebirth carried across as one light. As the dying bird is drawn into the bottom pole (from 0.6 s
+  // before it arrives) a bead of its light gathers there and starts up the pillar at once, slowly (never still), in its
+  // colour turning to the newborn's, reaches the top pole as the new bird gathers out of it, and shrinks into the seed
+  // as the wings open (gone 0.5 s into the life). s: seconds from the nearest rebirth; y on the sphere's axis
+  function beadAt(T){
+    const loop = Math.floor(T/period), lt = T - loop*period, s = lt > period/2 ? lt - period : lt, arr = T_ARR - period;
+    if (s < arr - 0.6 || s > 0.5) return null;
+    const R0 = arr - 0.5, R1 = 0, inA = smooth(arr - 0.6, arr - 0.4, s), outA = 1 - smooth(0.12, 0.5, s);
+    const x = clamp((s - R0)/(R1 - R0), 0, 1), e = x < 0.5 ? 2*x*x : 1 - Math.pow(-2*x + 2, 2)/2, sp = x > 0 && x < 1 ? (x < 0.5 ? 4*x : 4*(1 - x)) : 0;
+    const y0 = phone ? -1.25 : -1.6, y = y0 + (POLE_T[1] - 0.02 - y0)*e;
+    const dyingB = isBL(s > 0 ? loop - 1 : loop), A = FLAME.stops[2], B = WHITE_GOLD;
+    const dc = dyingB ? B : A, nc = dyingB ? A : B, col = lerp3(dc, nc, smooth(-0.6, 0.0, s));
+    return { s, y, a: inA*outA, tail: sp/2, size: 1 - 0.4*smooth(0.0, 0.5, s), col };
+  }
   let night = 1;
-  return { setNight(k){ night = k; }, at, flapHz, simulate, resetChains, outline, uniforms, lifeOf, lapPoint, lapArc, setLift(k){ lift = k; },
+  return { beadAt, strokeCount, get genes(){ return { on: GENES_ON, version: GENOME_V, viewer: VIEWER, A: GA, B: GB }; }, setNight(k){ night = k; }, at, flapHz, simulate, resetChains, outline, uniforms, lifeOf, lapPoint, lapArc, setLift(k){ lift = k; },
     TOP_IN, POLE_IN, POLE_T, POLE_B, T_ARR, period };
 }

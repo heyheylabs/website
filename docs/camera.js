@@ -23,7 +23,7 @@ const lerp = (a, b, t) => a + (b - a)*t;
 // close-up's rise and fall inside the hand-over's progress t (0..1)
 export const SHOTS = {
   '2>3': { subject: 'head', zoom: 3.0, at: [0.5, 0.46], rise: [0.12, 0.42], fall: [0.62, 0.9] },
-  '3>4': { subject: 'plumes', zoom: 2.3, at: [0.5, 0.5], rise: [0.12, 0.42], fall: [0.62, 0.9] },
+  // '3>4' (the plumes) is off: that hand-over runs behind the stack section, its art held at 22%
   '4>5': { subject: 'crown', zoom: 2.6, at: [0.5, 0.42], rise: [0.1, 0.4], fall: [0.6, 0.9] },
   '6>7': { subject: 'head', zoom: 2.8, at: [0.5, 0.44], rise: [0.08, 0.4], fall: [0.58, 0.88] },
 };

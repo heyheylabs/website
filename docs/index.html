@@ -13,6 +13,7 @@
 <link rel="preload" href="fonts/Newsreader-normal-300-500.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="fonts/fonts.css">
 <link rel="stylesheet" href="page.css">
+<link rel="stylesheet" href="stack/stack.css">
 <script>
 // Theme and scheme before first paint, so no frame shows the wrong one. ?theme=light|dark overrides; then the visitor's
 // saved choice; then the system. The scheme follows the theme (light: Graphite, the ink drawing of M29; dark: Plasma)
@@ -26,6 +27,8 @@ d.setAttribute('data-theme',t);d.setAttribute('data-scheme',s);d.classList.add('
 var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='light'?'#E7E5E1':'#15171A')})();
 </script>
 <!-- GSAP 3.15.0 and ScrollTrigger, our own pinned copies from the npm package (README: hashes) -->
+<!-- M36: genome.js v3 (from 2026-10-07-hhl-phoenix-field/lab, vendored): each viewer's own line of birds, seeded in their browser -->
+<script src="genome.js"></script>
 <script src="vendor/gsap.min.js" defer></script>
 <script src="vendor/ScrollTrigger.min.js" defer></script>
 <link rel="icon" href="/favicon.ico" sizes="32x32">
@@ -80,8 +83,8 @@ var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('co
   <!-- 1. The promise -->
   <section class="scene hero" id="top" data-scene="1" aria-labelledby="s1-h">
     <div class="hero-words words">
-      <h1 id="s1-h">Every layer, engineered.</h1>
-      <p class="standfirst">Bring important work back to life, with one team that designs, builds, secures and runs&nbsp;it.</p>
+      <h1 id="s1-h">Good work, brought&nbsp;back.</h1>
+      <p class="standfirst">We keep what is sound, finish the rest on dated milestones, and run it with&nbsp;you.</p>
       <div class="actions">
         <a class="btn primary" href="mailto:hello@heyheylabs.com.au?subject=Talk%20to%20an%20engineer">Talk to an engineer</a>
         <a class="text-link" href="mailto:hello@heyheylabs.com.au?subject=Revive%20a%20project">Revive a project</a>
@@ -92,7 +95,7 @@ var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('co
   </section>
 
   <!-- 2. Five layers -->
-  <section class="scene pinned" data-scene="2" style="--len: 2.4" aria-labelledby="s2-h">
+  <section class="scene pinned" data-scene="2" style="--len: 2.2" aria-labelledby="s2-h">
     <div class="stage words-left">
       <div class="art" aria-hidden="true"></div>
       <div class="words">
@@ -120,35 +123,78 @@ var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('co
   </section>
 
   <!-- 3. The line through the middle -->
-  <section class="scene pinned" data-scene="3" style="--len: 2.5" aria-labelledby="s3-h">
+  <section class="scene pinned" data-scene="3" style="--len: 2.2" aria-labelledby="s3-h">
     <div class="stage words-right">
       <div class="art" aria-hidden="true"></div>
       <div class="words">
         <h2 id="s3-h">Security, built into every&nbsp;layer.</h2>
         <div class="beats">
-          <p class="body beat-a">Access only where it is needed. Every change logged. Your industry&rsquo;s rules as checks that can stop a&nbsp;release.</p>
+          <p class="body beat-a">Every change tested and logged, with your industry&rsquo;s rules as checks that can stop a&nbsp;release.</p>
           <div class="proof">
           <ul class="facts beat-b" role="list">
             <li><button type="button" class="fact" aria-expanded="false" aria-controls="src-1"><span class="fig">16,000+</span><span class="cap">automated tests on every change</span></button><p class="src" id="src-1" hidden>Merge queue census, 27&nbsp;Sep&nbsp;2026: 16,001&nbsp;passed.</p></li>
             <li><button type="button" class="fact" aria-expanded="false" aria-controls="src-2"><span class="fig">3&#8239;min 39&#8239;s</span><span class="cap">to roll back a release, drilled</span></button><p class="src" id="src-2" hidden>Rollback drill, 6&nbsp;Sep&nbsp;2026.</p></li>
             <li><button type="button" class="fact" aria-expanded="false" aria-controls="src-3"><span class="fig">90&#8239;days</span><span class="cap">between encryption key rotations</span></button><p class="src" id="src-3" hidden>Cloud KMS key policy on Asimov Cloud, checked 7&nbsp;Oct&nbsp;2026.</p></li>
           </ul>
-          <div class="platform beat-c">
-            <h3>Built on Asimov&nbsp;Cloud.</h3>
-            <p class="body">Our own platform, defined as code and run on Google Cloud in&nbsp;Australia.</p>
-            <!-- B63 (Tim, Fri 9 Oct 2026): Google's own Google Cloud logo where the page names Google Cloud, never
-                 altered, blended in by placement, scale and clear space (at least the cloud icon's height). Files and
-                 their provenance: assets/ (PROVENANCE.md); by night the reversed stopgap until Google's own -->
-            <span class="gc-logo"><img class="gc-day" src="assets/google-cloud-logo.svg" alt="Google Cloud" width="123" height="20"><img class="gc-night" src="assets/google-cloud-logo-reversed.svg" alt="Google Cloud" width="123" height="20"></span>
-            <p class="certs">Google Cloud&rsquo;s infrastructure is independently audited for SOC&nbsp;2, ISO/IEC&nbsp;27001, IRAP and PCI&nbsp;DSS.</p>
-            <a class="text-link" href="https://cloud.google.com/security/compliance" rel="noopener">Google Cloud&rsquo;s certifications</a>
-          </div>
           </div>
         </div>
         <p class="vh">Beside these words, the five bands close back into the sphere and the line along its axis brightens, with sparks rising along it.</p>
       </div>
     </div>
   </section>
+
+  <!-- the stack (Tim, Fri 9 Oct 2026): stack/stack.html, pasted unchanged, per its README -->
+<!-- HEY HEY LABS landing: "the stack" section (Fri 9 Oct 2026, ledger B52, B63, B65, B67; round 4). Drop-in fragment: see README.md.
+     Asset paths are written from a page two folders below the landing root (variants/v3-r5/, big/b2-one-shot/ ...).
+     Every logo is the owner's official file, unaltered (../assets/PROVENANCE.md). Every claim and its source: NOTES.md. -->
+<section class="stack" id="stack" aria-labelledby="stack-h">
+  <div class="stack-in">
+    <header class="stack-head">
+      <h2 id="stack-h">Built on Asimov&nbsp;Cloud.</h2>
+      <p class="stack-lede">Asimov Cloud is our own platform: written as code, run on Google Cloud in Sydney, and the same foundation under everything we build and&nbsp;run.</p>
+    </header>
+
+    <div class="stack-plate" role="group" aria-label="The technology Asimov Cloud runs on">
+      <div class="stack-row stack-row--gc">
+        <p class="stack-label"><img class="stack-gc" src="assets/google-cloud-icon.svg" alt="" width="30" height="30"><span>Google Cloud<span class="stack-sub">Sydney region</span></span></p>
+        <ul class="stack-cells" role="list">
+          <li><span class="stack-logo"><img class="gke" src="assets/gcp-products/GKE-512-color.svg" alt="" width="38" height="38"></span><span class="stack-name">GKE Autopilot</span></li>
+          <li><span class="stack-logo"><img class="gcs" src="assets/gcp-products/Cloud_Storage-512-color.svg" alt="" width="38" height="38"></span><span class="stack-name">Cloud Storage</span></li>
+          <li><span class="stack-logo"><img class="bq" src="assets/gcp-products/BigQuery-512-color.svg" alt="" width="41" height="41"></span><span class="stack-name">BigQuery</span></li>
+          <li><span class="stack-logo"><img class="vx" src="assets/gcp-products/VertexAI-512-color.svg" alt="" width="48" height="48"></span><span class="stack-name">Vertex AI</span></li>
+        </ul>
+      </div>
+      <div class="stack-row stack-row--ours">
+        <p class="stack-label"><span>How we build and run&nbsp;it<span class="stack-sub">Open source and services</span></span></p>
+        <ul class="stack-cells" role="list">
+          <li><span class="stack-logo"><img class="on-light k8s" src="assets/stack-logos/kubernetes/kubernetes-icon-black.svg" alt="" width="28" height="28"><img class="on-dark k8s" src="assets/stack-logos/kubernetes/kubernetes-icon-white.svg" alt="" width="28" height="28"></span><span class="stack-name">Kubernetes</span></li>
+          <li><span class="stack-logo"><img class="on-light tofu-l" src="assets/stack-logos/opentofu/opentofu-symbol-on-light-mono.svg" alt="" width="49" height="49"><img class="on-dark tofu-d" src="assets/stack-logos/opentofu/opentofu-symbol-on-dark-mono.svg" alt="" width="28" height="30"></span><span class="stack-name">OpenTofu</span></li>
+          <li><span class="stack-logo"><img class="on-light gh" src="assets/stack-logos/github/GitHub_Invertocat_Black.svg" alt="" width="30" height="29"><img class="on-dark gh" src="assets/stack-logos/github/GitHub_Invertocat_White.svg" alt="" width="30" height="29"></span><span class="stack-name">GitHub Actions</span></li>
+          <li><span class="stack-logo"><img class="on-light tmp" src="assets/stack-logos/temporal/Temporal_Symbol_dark.svg" alt="" width="117" height="117"><img class="on-dark tmp" src="assets/stack-logos/temporal/Temporal_Symbol_light.svg" alt="" width="117" height="117"></span><span class="stack-name">Temporal Cloud</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <dl class="stack-claims">
+      <div><dt>Kubernetes on GKE&nbsp;Autopilot.</dt><dd>Our services run as containers on one managed cluster in Sydney. Google runs the machines, and policy checks every workload before it&nbsp;starts.</dd></div>
+      <div><dt>Infrastructure as&nbsp;code.</dt><dd>Our cloud is written in OpenTofu. Each change is reviewed in a pull request and applied by CI, not by&nbsp;hand.</dd></div>
+      <div><dt>A merge queue no one can&nbsp;skip.</dt><dd>Each change is tested against the latest version before it lands. The rule has no bypass, for us&nbsp;included.</dd></div>
+      <div><dt>Durable workflows on Temporal&nbsp;Cloud.</dt><dd>Long-running work keeps its place through restarts and failures. Our TypeScript workers run against Temporal Cloud&rsquo;s Sydney&nbsp;region.</dd></div>
+      <div><dt>Watched, encrypted, kept in&nbsp;Australia.</dt><dd>Cloud Monitoring and Logging watch the platform and alert on admin actions. Our keys sit in Cloud KMS and rotate at least every 90&nbsp;days. What the platform stores stays in&nbsp;Australia.</dd></div>
+    </dl>
+
+    <div class="stack-certs">
+      <h3 class="stack-certs-h">Our providers&rsquo; certifications</h3>
+      <ul role="list">
+        <li><a href="https://cloud.google.com/security/compliance" rel="noopener">Google Cloud<span class="stack-vh"> compliance page</span></a><span class="stack-list">SOC&nbsp;1, SOC&nbsp;2 and SOC&nbsp;3; ISO/IEC 27001, 27017, 27018, 27701 and 42001; ISO&nbsp;9001; IRAP; PCI&nbsp;DSS; CSA&nbsp;STAR.</span></li>
+        <li><a href="https://temporal.io/security" rel="noopener">Temporal Cloud<span class="stack-vh"> security page</span></a><span class="stack-list">SOC&nbsp;2 Type&nbsp;2 report. Temporal states GDPR and HIPAA compliance.</span></li>
+        <li><a href="https://docs.github.com/en/enterprise-cloud@latest/admin/overview/accessing-compliance-reports-for-your-enterprise" rel="noopener">GitHub<span class="stack-vh"> compliance reports page</span></a><span class="stack-list">SOC&nbsp;1 Type&nbsp;2 and SOC&nbsp;2 Type&nbsp;2 reports; ISO/IEC 27001:2022; CSA&nbsp;STAR Level&nbsp;2.</span></li>
+      </ul>
+      <p class="stack-fine">Each certification belongs to its vendor and covers that vendor&rsquo;s own services. None is a certification of HEY HEY&nbsp;LABS. Logos are the property of their&nbsp;owners.</p>
+    </div>
+  </div>
+</section>
+
 
   <!-- 4. The fall and the rebirth -->
   <section class="scene pinned" data-scene="4" style="--len: 2.4" aria-labelledby="s4-h1">
@@ -158,11 +204,11 @@ var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('co
         <div class="swap">
           <div class="beat-a">
             <h2 id="s4-h1">Good work, unfinished.</h2>
-            <p class="body">A vendor moves on. A budget changes. The one engineer who knew it&nbsp;leaves.</p>
+            <p class="body">A vendor moves on, a budget changes, or the one engineer who knew it&nbsp;leaves.</p>
           </div>
           <div class="beat-b">
             <h2 id="s4-h2">We bring it back, and take it&nbsp;further.</h2>
-            <p class="body">We keep what is sound and finish the rest on dated&nbsp;milestones.</p>
+            <p class="body">We read what exists and keep what is&nbsp;sound.</p>
             <a class="text-link" href="mailto:hello@heyheylabs.com.au?subject=Revive%20a%20project">Revive a project</a>
           </div>
         </div>
@@ -177,8 +223,7 @@ var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('co
       <div class="art" aria-hidden="true"></div>
       <div class="words">
         <h2 id="s5-h">The same standard at any&nbsp;scale.</h2>
-        <p class="body">From a two-person practice to a national&nbsp;organisation.</p>
-        <p class="body coda">Fixed scope, firm dates, code you&nbsp;own.</p>
+        <p class="body coda">From a two-person practice to a national&nbsp;organisation.</p>
         <p class="vh">Beside these words, the view pulls back until the sphere is one bright point among many others, then pushes in until it is larger than the screen.</p>
       </div>
     </div>
@@ -191,11 +236,11 @@ var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('co
     <div class="stage words-left">
       <div class="art" aria-hidden="true"></div>
       <div class="words">
-        <h2 id="s6-h">Working in the first&nbsp;week.</h2>
+        <h2 id="s6-h">How we&nbsp;work.</h2>
         <div class="step-track" aria-hidden="true"><span>Show</span><span>Scope</span><span>Build</span><span>Run</span><i class="bar"></i></div>
         <ol class="steps" role="list">
           <li><h3>Show.</h3><p>What we found and what we would do, in plain&nbsp;terms.</p></li>
-          <li><h3>Scope.</h3><p>One outcome, a start date and an end date, agreed on day&nbsp;one.</p></li>
+          <li><h3>Scope.</h3><p>One outcome, with a start and an end, agreed&nbsp;together.</p></li>
           <li><h3>Build.</h3><p>Our engineers beside your people. Every change tested and&nbsp;logged.</p></li>
           <li><h3>Run.</h3><p>We run it, watch it, and add the next piece when it earns its&nbsp;place.</p></li>
         </ol>
@@ -247,6 +292,7 @@ var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('co
   </section>
 </main>
 
+<script src="stack/stack.js" defer></script>
 <script type="module" src="page.js"></script>
 </body>
 </html>

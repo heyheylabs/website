@@ -130,6 +130,9 @@ a { color: inherit; }
 .spine path.sp-lead-dot { stroke: var(--ink-2); stroke-width: 4; stroke-linecap: round; }
 .sp-sparks { stroke: var(--sp-spark); stroke-width: 1.5; stroke-dasharray: 2 34; }
 .sp-pulse { stroke: var(--sp); stroke-width: 1.5; }
+/* the stack's art veil (stack/README.md): the art at 22% while the stack's content is on screen */
+#field, .spine { opacity: var(--stack-art, 1); transition: opacity 400ms cubic-bezier(0, 0, 0.2, 1); }
+@media (prefers-reduced-motion: reduce) { #field, .spine { transition: none; } }
 .no-gl .spine, .no-gl #field, .no-gl .orbit, .no-gl .orbit-hint { display: none; }
 /* the iPhone's status bar: the ground under the clock (and a short fade below it), so no word scrolls under it.
    On a desktop the inset is 0 and so is all of this */
@@ -290,6 +293,14 @@ h3 { font: 400 20px/1.3 var(--text); letter-spacing: 0; text-wrap: balance; }
    filter, recolour or crop; the night theme shows the reversed file. Clear space: at least the cloud icon's height
    (about 0.8 of the logo's height) on every side. 20 px tall on a phone, 24 on a desktop: the cap height of the text
    beside it, so it sits in the paragraph's rhythm, not as a badge */
+/* B65: Google's four-colour cloud mark beside the Asimov Cloud heading, its clear space the gap; then a quiet row of
+   the four product icons we run on, each with its name (Source Sans 3, Steel). Google's files are never altered */
+.gc-head { display: flex; align-items: center; gap: 16px; }
+.gc-icon { display: block; width: 40px; height: 40px; flex: none; }
+.gc-products { list-style: none; display: flex; flex-wrap: wrap; gap: 12px 24px; margin-top: var(--s4); }
+.gc-products li { display: flex; align-items: center; gap: 8px; font: 400 15px/1.2 var(--sans); color: var(--steel); }
+.gc-products img { display: block; width: 24px; height: 24px; flex: none; }
+@media (min-width: 960px) { .gc-icon { width: 44px; height: 44px; } }
 .gc-logo { display: block; margin: 20px 0; line-height: 0; }
 .gc-logo img { display: block; height: 20px; width: auto; }
 .gc-night { display: none !important; }

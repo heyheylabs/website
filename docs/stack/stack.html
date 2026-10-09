@@ -1,0 +1,50 @@
+<!-- HEY HEY LABS landing: "the stack" section (Fri 9 Oct 2026, ledger B52, B63, B65, B67; round 8). Drop-in fragment: see README.md.
+     Asset paths are written from a page two folders below the landing root (variants/v3-r5/, big/b2-one-shot/ ...).
+     Every logo is the owner's official file, unaltered (../assets/PROVENANCE.md). Every claim and its source: NOTES.md. -->
+<section class="stack" id="stack" aria-labelledby="stack-h">
+  <div class="stack-in">
+    <header class="stack-head">
+      <h2 id="stack-h">Built on Asimov&nbsp;Cloud.</h2>
+      <p class="stack-lede">Asimov Cloud is our own platform: written as code, run on Google Cloud in Sydney, and the same foundation under everything we build and&nbsp;run.</p>
+    </header>
+
+    <div class="stack-plate" role="group" aria-label="The technology Asimov Cloud runs on">
+      <div class="stack-row stack-row--gc">
+        <p class="stack-label"><img class="stack-gc" src="../../assets/google-cloud-icon.svg" alt="" width="30" height="30"><span>Google Cloud<span class="stack-sub">Sydney region</span></span></p>
+        <ul class="stack-cells" role="list">
+          <li><span class="stack-logo"><img class="gke" src="../../assets/gcp-products/GKE-512-color.svg" alt="" width="40" height="40"></span><span class="stack-name">GKE Autopilot</span></li>
+          <li><span class="stack-logo"><img class="gcs" src="../../assets/gcp-products/Cloud_Storage-512-color.svg" alt="" width="38" height="38"></span><span class="stack-name">Cloud Storage</span></li>
+          <li><span class="stack-logo"><img class="bq" src="../../assets/gcp-products/BigQuery-512-color.svg" alt="" width="41" height="41"></span><span class="stack-name">BigQuery</span></li>
+          <li><span class="stack-logo"><img class="vx" src="../../assets/gcp-products/VertexAI-512-color.svg" alt="" width="48" height="48"></span><span class="stack-name">Vertex AI</span></li>
+        </ul>
+      </div>
+      <div class="stack-row stack-row--ours">
+        <p class="stack-label"><span>How we build and run&nbsp;it</span></p>
+        <ul class="stack-cells" role="list">
+          <li><span class="stack-logo"><img class="on-light k8s" src="../../assets/stack-logos/kubernetes/kubernetes-icon-black.svg" alt="" width="28" height="28"><img class="on-dark k8s" src="../../assets/stack-logos/kubernetes/kubernetes-icon-white.svg" alt="" width="28" height="28"></span><span class="stack-name">Kubernetes</span></li>
+          <li><span class="stack-logo"><img class="on-light tofu-l" src="../../assets/stack-logos/opentofu/opentofu-symbol-on-light-mono.svg" alt="" width="49" height="49"><img class="on-dark tofu-d" src="../../assets/stack-logos/opentofu/opentofu-symbol-on-dark-mono.svg" alt="" width="28" height="30"></span><span class="stack-name">OpenTofu</span></li>
+          <li><span class="stack-logo"><img class="on-light gh" src="../../assets/stack-logos/github/GitHub_Invertocat_Black.svg" alt="" width="30" height="29"><img class="on-dark gh" src="../../assets/stack-logos/github/GitHub_Invertocat_White.svg" alt="" width="30" height="29"></span><span class="stack-name">GitHub Actions</span></li>
+          <li><span class="stack-logo"><img class="on-light tmp" src="../../assets/stack-logos/temporal/Temporal_Symbol_dark.svg" alt="" width="117" height="117"><img class="on-dark tmp" src="../../assets/stack-logos/temporal/Temporal_Symbol_light.svg" alt="" width="117" height="117"></span><span class="stack-name">Temporal Cloud</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <dl class="stack-claims">
+      <div><dt>Kubernetes on GKE&nbsp;Autopilot.</dt><dd>Our services run as containers on one managed cluster in Sydney. Google runs the machines, so our time goes into your product, and policy checks every workload before it&nbsp;starts.</dd></div>
+      <div><dt>Infrastructure as&nbsp;code.</dt><dd>Our cloud is written in OpenTofu. Each change is reviewed in a pull request and applied by CI, never by hand, so every change can be traced and&nbsp;reversed.</dd></div>
+      <div><dt>A merge queue no one can&nbsp;skip.</dt><dd>Each change passes more than 19,000 automated tests against the latest version before it can reach you. The rule has no bypass, not even for&nbsp;us.</dd></div>
+      <div><dt>Durable workflows on Temporal&nbsp;Cloud.</dt><dd>Long-running work keeps its place through restarts and failures, so a job is not lost halfway. Our TypeScript workers run against Temporal Cloud&rsquo;s Sydney&nbsp;region.</dd></div>
+      <div><dt>Watched, encrypted, kept in&nbsp;Australia.</dt><dd>Cloud Monitoring and Logging watch the platform and alert on admin actions. Our keys sit in Cloud KMS and rotate at least every 90&nbsp;days. What the platform stores stays in&nbsp;Australia.</dd></div>
+    </dl>
+
+    <div class="stack-certs">
+      <h3 class="stack-certs-h">Our providers&rsquo; certifications</h3>
+      <ul role="list">
+        <li><a href="https://cloud.google.com/security/compliance" rel="noopener">Google Cloud<span class="stack-vh"> compliance page</span></a><span class="stack-list">SOC&nbsp;1, SOC&nbsp;2 and SOC&nbsp;3; ISO/IEC 27001, 27017, 27018, 27701 and 42001; ISO&nbsp;9001; IRAP; PCI&nbsp;DSS; CSA&nbsp;STAR.</span></li>
+        <li><a href="https://temporal.io/security" rel="noopener">Temporal Cloud<span class="stack-vh"> security page</span></a><span class="stack-list">SOC&nbsp;2 Type&nbsp;2 report. Temporal states GDPR and HIPAA compliance.</span></li>
+        <li><a href="https://docs.github.com/en/enterprise-cloud@latest/admin/overview/accessing-compliance-reports-for-your-enterprise" rel="noopener">GitHub<span class="stack-vh"> compliance reports page</span></a><span class="stack-list">SOC&nbsp;1 Type&nbsp;2 and SOC&nbsp;2 Type&nbsp;2 reports; ISO/IEC 27001:2022; CSA&nbsp;STAR Level&nbsp;2.</span></li>
+      </ul>
+      <p class="stack-fine">Each certification belongs to its vendor and covers that vendor&rsquo;s own services. None is a certification of HEY&nbsp;HEY&nbsp;LABS. Logos are the property of their&nbsp;owners.</p>
+    </div>
+  </div>
+</section>

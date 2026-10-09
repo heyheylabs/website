@@ -174,7 +174,7 @@ const rel = el => el.getBoundingClientRect();
 // ---------- where the words' ink sits, settled ----------
 // The actual extent of a scene's text (its line boxes, not its grid area), as it sits once the stage has stuck, so the
 // sphere can be framed against the words themselves. Cached per layout (cleared on measure).
-const INK = 'h1, h2, .standfirst, .body, .facts, .actions, .text-link, .platform h3, .certs, .steps';
+const INK = 'h1, h2, .standfirst, .body, .facts, .actions, .text-link, .platform h3, .gc-products, .certs, .steps';
 const inkCache = new Map();
 function inkOf(n){
   if (inkCache.has(n)) return inkCache.get(n);
@@ -315,8 +315,8 @@ const POSES = {
       fill = [gapTo - Rf - 120, vh*0.5, Rf];   // v3-r5 (REVIEW-t2c finding 3, M19): 120 px left, so the rim never crosses the headline
     } else {
       const A = artBox(5); base = phoneFrame(5);
-      const Rf = Math.min(vw*0.7, A.h*0.66);
-      fill = [vw*0.6, A.y + A.h - 12 - Rf, Rf];
+      const ink5 = inkOf(5), Rf = Math.min(vw*0.7, A.h*0.66);
+      fill = [vw*0.6, Math.min(A.y + A.h - 12 - Rf, (ink5 ? ink5.y0 : A.y + A.h) - 24 - Rf*1.04*1.06), Rf];   // v3-r5 (calm check): 24 px clear of the words, glow included
     }
     const out = smooth(0.0, 0.26, p), inn = smooth(0.3, 0.56, p);
     // v3-r4 (review finding 3, B52): the farthest the view pulls back still leaves the sphere 96 px across on a phone and
@@ -440,13 +440,12 @@ function buildTimelines(){
     t.set({}, {}, 1); }
   { // scene 3: the line, then our figures, then the platform under them (C14): one block at a time under the headline,
     // in one place, each gone before the next arrives (U32: few words on screen)
-    const t = tl(3), el = S(3).el, a = $('.beat-a', el), b = $('.beat-b', el), c = $('.beat-c', el);
-    gsap.set([a, b, c], { clearProps: 'opacity,transform' });
-    gsap.set([b, c], { opacity: 0, y: 8 });
-    t.to(a, { opacity: 0, y: -6, duration: 0.035, ease: 'power2.in' }, 0.33);
-    t.to(b, { opacity: 1, y: 0, duration: 0.05, ease: 'expo.out' }, 0.375);
-    t.to(b, { opacity: 0, y: -6, duration: 0.035, ease: 'power2.in' }, 0.645);
-    t.to(c, { opacity: 1, y: 0, duration: 0.05, ease: 'expo.out' }, 0.69);
+    // v3-r5 (the stack): the line, then our figures, which stay; the platform is now the stack section after this scene
+    const t = tl(3), el = S(3).el, a = $('.beat-a', el), b = $('.beat-b', el);
+    gsap.set([a, b], { clearProps: 'opacity,transform' });
+    gsap.set(b, { opacity: 0, y: 8 });
+    t.to(a, { opacity: 0, y: -6, duration: 0.035, ease: 'power2.in' }, 0.38);
+    t.to(b, { opacity: 1, y: 0, duration: 0.05, ease: 'expo.out' }, 0.425);
     t.set({}, {}, 1); }
   { // scene 4: the fall's words leave as the bird is drawn in; the rebirth's words arrive as the crown swells.
     // v3-r5 (review finding 1): in order. The fall's line goes before its headline; the rebirth's headline comes
@@ -1067,6 +1066,9 @@ function update(){
   pose.vis = 1;
   if (!wide && g.kind === 'blend' && pose.frame) pose.frame = phoneLift(g, t, pose.frame);
   pose = camera.apply(pose, g, t, vw, innerHeight);   // v3-r5: the close-ups on the phoenix in the hand-overs (camera.js)
+  // M40: the bird keeps flying where the reader stops: the held loop drifts 0.6 s either way along the lap on an 8 s
+  // swell (not in the rebirth's own moment or the close)
+  if (pose.loopT !== null && pose.loopT !== undefined && sceneN !== 7 && !(sceneN === 4 && p > 0.2 && p < 0.8)) pose.loopT += 0.6*Math.sin(clock*2*Math.PI/8);
   cur = { n: sceneN, p: +p.toFixed(3), seg: g.kind, t: +t.toFixed(3) };
   if (!reduced) wordDrift();
   // v3-r3: a scene's timeline is at 0 up to and including its first pixel (it read 1 exactly at the boundary, the flash)
@@ -1144,7 +1146,7 @@ document.addEventListener('focusin', e => {
   if (reduced || !segs.length) return;
   const sec = e.target.closest('.pinned'); if (!sec) return;
   const n = +sec.dataset.scene, g = segs.find(x => x.kind === 'hold' && x.a === n); if (!g || !(n in MOMENT)) return;
-  const y = g.from + (g.to - g.from)*(e.target.closest('.beat-c') ? 0.88 : MOMENT[n]);
+  const y = g.from + (g.to - g.from)*MOMENT[n];
   if (Math.abs(scrollY - y) > 4 && shown(e.target) < 0.5) { scrollTo(0, y); if (scrub && scrub.getTween()) scrub.getTween().progress(1); }
 });
 

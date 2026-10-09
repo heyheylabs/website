@@ -274,6 +274,7 @@ uniform sampler2D uAcc, uBird, uBloom, uBirdW; uniform vec2 uRes; uniform float 
 // round 8: the two quiet climaxes as light at the pillar's ends (r5): the foot gathers the falling bird in, the crown
 // blooms the new life out (in its colour). Centres in device px, radius in device px.
 uniform vec4 uPools; uniform float uPoolR, uFootA, uCrownA, uShimK; uniform vec3 uFootC, uCrownC;
+uniform vec4 uBead; uniform vec3 uBeadC; uniform vec2 uBeadD; uniform float uBeadS;   // fh11: the rebirth's bead (device px, alpha, tail), its colour, the pillar's direction, its size in device px
 uniform vec4 uBox; uniform vec4 uHide[${MAX_HIDE}]; uniform float uHideA[${MAX_HIDE}]; uniform int uHideN; uniform vec3 uBgC, uBgE;
 // v3-r3 (review High 1): the words' backing is a soft radial veil, never a rectangle. Each text line's box gives an
 // ellipse around it (semi-axes 1.25 of the box's half size, plus 6 px), feathered out over uVeilF device px (160 CSS px),
@@ -358,6 +359,12 @@ void main(){
   { vec2 pf = vec2(gl_FragCoord.x, gl_FragCoord.y);
     float df = length(pf - uPools.xy)/uPoolR, dc = length(pf - uPools.zw)/uPoolR;
     c += (uFootC*uFootA*(exp(-df*df*2.0)*0.6 + exp(-df*df*14.0)*0.8) + uCrownC*uCrownA*(exp(-dc*dc*2.0)*0.6 + exp(-dc*dc*30.0)*0.9))*keep*(1.0 - uDay); }
+  // fh11: the bead of light that carries the rebirth up the pillar (a core, a halo, a short tail below it)
+  vec3 bm = vec3(0.0);
+  if (uBead.z > 0.001) { vec2 d = gl_FragCoord.xy - uBead.xy; float rc = uBeadS, dd = dot(d, d), t = dot(d, -uBeadD), q = length(d + uBeadD*t), L = max(28.0*uBead.w*rc/3.0, 1.0);
+    float tl = uBead.w > 0.01 && t > 0.0 ? exp(-q*q/(0.6*rc*rc))*pow(max(1.0 - t/L, 0.0), 1.5) : 0.0;
+    bm = vec3(exp(-dd/(rc*rc)), exp(-dd/(9.0*rc*rc)), tl)*uBead.z; }
+  c = mix(c, uBeadC*1.7, clamp(bm.x*1.3, 0.0, 0.92)*(1.0 - uDay)) + uBeadC*(0.7*bm.y + 1.0*bm.z)*(1.0 - uDay);
   c += mix(uBgC, uBgE, smoothstep(0.0, 1.1, r));
   c *= mix(1.0, 1.0 - smoothstep(0.45, 1.35, r), uVig);
   // a long soft shoulder up to the cap, per channel, never past the peak colour: a broad lit area settles well below the
@@ -421,6 +428,7 @@ void main(){
     d = mix(d, uDayInk, clamp(wash*0.05 + tide*0.07, 0.0, 1.0));
     float db = mx3(bdd)*k;
     d = mix(d, uDayInk, (1.0 - exp(-db*4.0))*0.70);
+    d = mix(d, mix(uDayInk, uBeadC*0.55, 0.45), clamp(bm.x*1.1 + 0.35*bm.z, 0.0, 0.9));   // fh11: the bead by day, a drop of pigment
     d += n*(1.2/255.0);
   }
   o = vec4(mix(c, d, uDay), 1.0);
@@ -869,9 +877,10 @@ export function createHero(cv, opts = {}) {
           const nb = g.nb*lod, E = g.sr + nb*2*g.sb;
           gl.uniform1f(v.uGrp, g.grp); gl.uniform1f(v.uNF, g.nf); gl.uniform1f(v.uNb, nb); gl.uniform1f(v.uSR, g.sr); gl.uniform1f(v.uSB, g.sb);
           gl.uniform1f(v.uSlant, g.slant); gl.uniform1f(v.uRachA, g.ra || 1); gl.uniform1f(v.uWR, g.wr); gl.uniform1f(v.uWB, g.wb);
-          if (g.fh && (b.life || 0) < 1e-3) continue;   // fh5: the fenghuang's own groups (the inner plumes, the head's lines)
-          if (v.uFOff) gl.uniform1f(v.uFOff, g.foff || 0); if (v.uHeadG) gl.uniform1f(v.uHeadG, g.grp === 9 ? 2 : g.grp === 4 || g.grp === 8 ? 1 : 0);
-          gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, ((g.outer && (b.life || 0) < 1e-3) ? g.outer : g.count)*E);
+          const sc = rig.strokeCount ? rig.strokeCount(g, b.life || 0) : { n: (g.fh && (b.life || 0) < 1e-3) ? 0 : ((g.outer && (b.life || 0) < 1e-3) ? g.outer : g.count), foff: g.foff || 0 };   // gen3: the genome sets the crest's and inner plumes' counts
+          if (!sc.n) continue;
+          if (v.uFOff) gl.uniform1f(v.uFOff, sc.foff); if (v.uHeadG) gl.uniform1f(v.uHeadG, g.grp === 9 ? 2 : g.grp === 4 || g.grp === 8 ? 1 : 0);
+          gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, sc.n*E);
         }
       }
     }
@@ -917,7 +926,13 @@ export function createHero(cv, opts = {}) {
       gl.uniform4f(u.uPools, pf[0]*sx, ch - pf[1]*sx, pc[0]*sx, ch - pc[1]*sx); gl.uniform1f(u.uPoolR, Math.max(2, o.r*0.3*sx));
       gl.uniform1f(u.uFootA, 0.32*foot*k); gl.uniform1f(u.uCrownA, 0.2*crown*k);
       gl.uniform3fv(u.uFootC, [0.93, 0.9, 0.82]); gl.uniform3fv(u.uCrownC, bird.nextB || (bird.life > 0.5 && tau < 0.3) || jl.exit > 0 ? [0.98, 0.9, 0.86] : [0.6, 0.66, 1.0]);
-      gl.uniform1f(u.uShimK, Math.min(1, jl.shimmer*3)); }
+      gl.uniform1f(u.uShimK, Math.min(1, jl.shimmer*3));
+      // fh11 (M40): the bead on the pillar, from the rig, projected onto the axis; off at the close and while the bird is hidden
+      const bb = rig.beadAt && jl.exit <= 0 ? rig.beadAt(simT) : null;
+      if (bb && u.uBead) { const q = projPx([0, bb.y, 0]), dx = pc[0] - pf[0], dy = pc[1] - pf[1], dl = Math.hypot(dx, dy) || 1;
+        gl.uniform4f(u.uBead, q[0]*sx, ch - q[1]*sx, bb.a*k*Math.min(1, birdK*1.5), bb.tail); gl.uniform3fv(u.uBeadC, bb.col);
+        gl.uniform2f(u.uBeadD, dx/dl, -dy/dl); gl.uniform1f(u.uBeadS, Math.max(2, 3*sx*bb.size*Math.max(1, o.r/220))); }
+      else if (u.uBead) gl.uniform4f(u.uBead, 0, 0, 0, 0); }
     gl.uniform2f(u.uRes, cw, ch); gl.uniform1f(u.uBloomK, PAL.bloom*0.8); gl.uniform1f(u.uVig, LK.vig*(1 - LK.dayNow));
     const sx = cw/vw;
     gl.uniform4f(u.uBox, box.x0*sx, box.y0*sx, box.x1*sx, box.y1*sx); gl.uniform1f(u.uFeather, Math.max(1, box.f*sx));
@@ -928,7 +943,7 @@ export function createHero(cv, opts = {}) {
     { // v3-r4: life A only (bird.life 0 is the flame phoenix), night only
       // measured against the bird's own strength (birdK), so a bird the scene quietens (scene 2's 0.3) still reads
       const bk = Math.max(0.2, birdK*birdIn), fk = (1 - clamp(bird.life || 0, 0, 1))*(1 - LK.dayNow)*smooth01(0.05, 0.2, birdK*birdIn);
-      gl.uniform1f(u.uFlK, fk); gl.uniform1f(u.uFlLo, FL_LO*bk); gl.uniform1f(u.uFlHi, FL_HI*bk); gl.uniform3fv(u.uFlTop, [1.0, 0x9A/255, 0x7A/255]); }
+      gl.uniform1f(u.uFlK, fk); gl.uniform1f(u.uFlLo, FL_LO*bk); gl.uniform1f(u.uFlHi, FL_HI*bk); gl.uniform3fv(u.uFlTop, [1.0, 0x4D/255, 0x5A/255]); }   // B66: scarlet #FF4D5A (v3-r4 #FF9A7A)
     gl.uniform1f(u.uDay, LK.dayNow); gl.uniform3fv(u.uDayBg, LK.dayBg); gl.uniform3fv(u.uDayInk, LK.dayInk); gl.uniform3fv(u.uSignal, LK.signal || LK.dayInk);
     gl.uniform1f(u.uShellA, 0.22); gl.uniform1f(u.uRidgeK, 30.0); gl.uniform1f(u.uPilK, 3.0);
     gl.uniform4f(u.uAxis, axis.x0*sx, axis.y0*sx, axis.x1*sx, axis.y1*sx); gl.uniform1f(u.uAxisW, axis.on ? Math.max(1.5, axis.w*sx) : 0); gl.uniform1f(u.uWashT, 0.06);
@@ -1029,7 +1044,7 @@ export function createHero(cv, opts = {}) {
     // setAxis([x0, y0, x1, y1], halfWidth) the pillar's light only on this segment (CSS px), or null to unclip (v3-r2, M33)
     setAxis(seg, w = 6){ if (!seg) { axis.on = false; return; } axis.on = true; [axis.x0, axis.y0, axis.x1, axis.y1] = seg; axis.w = w; },
     setFlight(r){ if (!r) { flight.on = false; return; } flight.on = true; [flight.x0, flight.y0, flight.x1, flight.y1] = r; },
-    get birdBox(){ return flight.on && bird.absorb < 0.35 ? birdBox(viewProj(camEye, cam.t, cam.roll), bird) : null; },
+    get birdBox(){ return bird.absorb < 0.35 ?   /* v3-r5 (M40): also in a close-up */ birdBox(viewProj(camEye, cam.t, cam.roll), bird) : null; },
     get flight(){ return flight.on ? [flight.x0, flight.y0, flight.x1, flight.y1] : null; },
     get birdShown(){ return birdK*dim; },
     setInteractive(on){ if (interactive === !!on) return; interactive = !!on; if (!on) { ptrs.clear(); drag = null; } orbBox = ''; },

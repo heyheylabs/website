@@ -1,0 +1,193 @@
+/* HEY HEY LABS landing: "the stack" section (Fri 9 Oct 2026, round 8; ledger B63, B65, B67). Drop-in: see README.md.
+   Reads the host page's tokens (--ground, --raised, --ink, --ink-2, --steel, --rule, --focus, --display, --text,
+   --sans or --ui, --m) and falls back to the T2 night values, so the same file works in v3-r5, the B pages and the
+   demo. Everything is scoped under .stack. No motion, no colour of our own: vendor colour lives only inside Google's
+   files. The ground is transparent, and the plate has no fill, so the host's sphere stays visible behind it (B52).
+   Logo sizes are optical, measured from each file's visible box and ink fill (NOTES.md, "Optical sizing"). */
+
+.stack {
+  --st-ink: var(--ink, #F3F2F0);
+  --st-ink-2: var(--ink-2, #CFD0D2);
+  --st-steel: var(--steel, #9BA1A8);
+  --st-rule: var(--rule, #2E3237);
+  --st-raised: var(--raised, #1D2024);
+  --st-ground: var(--ground, #15171A);
+  --st-focus: var(--focus, #E3E8FF);
+  --st-hover: var(--btn-hover, #FFFFFF);
+  --st-display: var(--display, "HHL Equator", "Newsreader", Georgia, serif);
+  --st-text: var(--text, "Newsreader", Georgia, serif);
+  --st-sans: var(--sans, var(--ui, "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif));
+  --st-m: var(--m, 24px);
+  position: relative;
+  overflow-x: clip;   /* the plate's full-bleed veil and the Temporal file's transparent padding stay inside */
+  padding: 104px var(--st-m) 104px;
+  color: var(--st-ink);
+  background: transparent;
+}
+.stack *, .stack *::before, .stack *::after { box-sizing: border-box; }
+.stack :where(h2, h3, p, ul, dl, dt, dd) { margin: 0; padding: 0; }
+.stack ul { list-style: none; }
+.stack-in { max-width: 1312px; margin: 0 auto; }
+.stack-vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+
+/* the head: one heading, one line; pure type (the Google mark moved off the heading into the plate) */
+.stack-head h2 { font: 300 42px/1.04 var(--st-display); letter-spacing: -0.012em; font-variation-settings: "opsz" 72;
+  color: var(--st-ink); text-wrap: balance; }
+.stack-lede { margin-top: 24px; max-width: 30em; font: 400 17px/1.6 var(--st-text); color: var(--st-ink-2); text-wrap: pretty; }
+
+/* the plate: two quiet rows on the page's own ground (no fill, no frame, no cell walls), so the sphere behind the
+   section shows through (B52). One hairline under each group. Phone: the group label above, then two columns of two.
+   The art behind the whole section is held at 25% by the host, driven by stack.js (README, "The art veil") */
+.stack-plate { margin-top: 48px; }
+.stack-row { border-bottom: 1px solid var(--st-rule); }
+.stack-label { display: flex; align-items: center; gap: 12px; padding: 0 0 4px;
+  font: 600 15px/1.3 var(--st-sans); color: var(--st-ink); }
+.stack-label > span { display: block; }
+.stack-sub { display: block; margin-top: 2px; font-weight: 400; font-size: 14px; color: var(--st-steel); }
+.stack-gc { display: block; width: 30px; height: 30px; flex: none; }
+.stack-row + .stack-row { margin-top: 32px; }
+.stack-row--ours .stack-label { min-height: 39px; }   /* the same height as the Google label, which carries a 30 px mark */
+@media (max-width: 599.98px) {
+  /* round 6: the Google mark sits centred in the logos' 38 px slot (x 43), so "Google Cloud" starts at x 74 with the
+     labels under it; "How we build and run it" keeps its own height, so both groups have 20 px to their first row */
+  .stack-gc { margin: 0 4px; }
+  .stack-row--ours .stack-label { min-height: 0; }
+}
+.stack-cells { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 8px; }
+.stack-cells li { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 10px;
+  padding: 16px 0 20px; }
+.stack-logo { display: flex; align-items: center; justify-content: center; width: 44px; height: 38px; flex: none; }
+.stack-logo img { display: block; flex: none; max-width: none; }
+.stack-name { max-width: 5.6em; font: 500 13px/1.25 var(--st-sans); color: var(--st-ink-2); text-align: center; text-wrap: balance; }
+
+/* optical sizes, measured (NOTES.md, "Optical sizing", and shots/round-2/logo-sizes.json): each file's box is set so
+   its VISIBLE ink, not its canvas, comes out at one of two sizes. Solid marks (ink fill 0.4 or more: Kubernetes,
+   OpenTofu, GitHub, GKE, Cloud Storage) 30 px on their longer side; open line marks (fill under 0.3: BigQuery,
+   Vertex AI, Temporal) 38 px (round 3, from 34), because thin linework needs more size to carry the same weight.
+   Transparent padding in a file may overflow its 44 by 38 slot, which crops nothing. Temporal's glyph sits 1.4% up and left of its own canvas
+   centre: the image is moved, never cut. Artwork stays the owners' files, unaltered. */
+.stack .gke { width: 40px; height: 40px; }   /* round 8: from 37.7, the hexagon is open, so it needs more box to carry Cloud Storage's weight */
+.stack .gcs { width: 37.9px; height: 37.9px; }
+.stack .bq  { width: 41.4px; height: 41.4px; }
+.stack .vx  { width: 48.1px; height: 48.1px; }
+.stack .k8s { width: 28.5px; height: 27.7px; }   /* round 4: 27 px visible (from 29), its ink near the row's 390 */
+.stack .tofu-l { width: 49.2px; height: 49.2px; }
+.stack .tofu-d { width: 27.8px; height: 30px; }
+.stack .gh { width: 30px; height: 29.4px; }
+.stack .tmp { width: 116.9px; height: 116.9px; transform: translate(1.7px, 1.6px); }
+
+/* theme: each owner's own black or white file, never a filter. Night is the host default; light when the host says so */
+.stack .on-light { display: none; }
+:root[data-theme="light"] .stack .on-light { display: block; }
+:root[data-theme="light"] .stack .on-dark { display: none; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .stack .on-light { display: block; }
+  :root:not([data-theme]) .stack .on-dark { display: none; }
+}
+
+/* the five claims: a quiet list, no rules, no icons */
+.stack-claims { margin-top: 64px; display: grid; gap: 32px; }
+.stack-claims dt { font: 300 24px/1.2 var(--st-display); letter-spacing: -0.006em; font-variation-settings: "opsz" 72;
+  color: var(--st-ink); text-wrap: balance; }
+.stack-claims dd { margin-top: 8px; max-width: 30em; font: 400 17px/1.6 var(--st-text); color: var(--st-ink-2); text-wrap: pretty; }
+
+/* the vendors' certifications, each stated as theirs, each name a link to that vendor's own page */
+.stack-certs { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--st-rule); }
+.stack-certs-h { font: 300 24px/1.2 var(--st-display); letter-spacing: -0.006em; font-variation-settings: "opsz" 72;
+  color: var(--st-ink); text-wrap: balance; }
+.stack-certs ul { margin-top: 8px; max-width: 30rem; }
+.stack-certs li { display: grid; gap: 0; padding: 4px 0 12px; }
+/* round 9: the label sits centred in its 44 px box and the box keeps 12 px clear above its certification line, so the
+   focus ring (2 px at a 3 px offset) never cuts the line's cap tops */
+.stack-certs a { display: inline-flex; align-items: center; justify-self: start; min-height: 44px; margin-bottom: 12px;
+  font: 600 15px/1.2 var(--st-sans); color: var(--st-ink);
+  text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 5px; text-decoration-color: var(--st-steel);
+  transition: text-decoration-color 160ms ease, color 160ms ease; }
+.stack-certs a:hover { text-decoration-color: var(--st-ink); }
+.stack-certs a:active { color: var(--st-ink-2); }
+.stack-certs a:focus-visible { outline: 2px solid var(--st-focus); outline-offset: 3px; border-radius: 2px; }
+/* round 7: the certification lines are reading text, so they take the reading face (U35); the vendor links stay Source Sans */
+.stack-list { font: 400 17px/1.55 var(--st-text); color: var(--st-ink-2); text-wrap: pretty; }
+.stack-fine { margin-top: 16px; max-width: 32em; font: 400 14px/1.5 var(--st-sans); color: var(--st-steel); text-wrap: pretty; }
+
+/* under 600 (round 4, round 6): two columns, each logo centred in a 38 px slot beside a one-line 15 px label */
+@media (max-width: 599.98px) {
+  .stack-cells { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 12px; row-gap: 16px; padding: 16px 0 20px; }
+  .stack-cells li { flex-direction: row; align-items: center; gap: 12px; padding: 0; min-height: 38px; }
+  /* round 6: every logo centred in one 38 px slot, so each column has one logo axis (x 43 and x 220 at 390) and the
+     logo to label gap is the same for every mark */
+  .stack-logo { width: 38px; justify-content: center; }
+  .stack-name { max-width: none; font-size: 15px; line-height: 1.3; text-align: left; }
+}
+/* 600 and up: names at 15 px, a little more air */
+@media (min-width: 600px) {
+  .stack-plate { margin-top: 64px; }
+  .stack-cells li { padding: 20px 0 24px; gap: 14px; }
+  .stack-name { max-width: none; font-size: 15px; }
+}
+/* 960 and up: the 12-column grid. Heading and lede share a line; the row label takes its own column */
+@media (min-width: 960px) {
+  .stack { padding: 160px var(--st-m) 160px; }
+  .stack-head { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 24px; align-items: end; }
+  .stack-head h2 { grid-column: 1 / span 6; font-size: 64px; }
+  /* round 5: the lede sits on the claims' text line (columns 7 to 12, the claim bodies' measure) */
+  /* round 6: no running line over about 75 characters: 34rem at 18 px Newsreader, 31rem at 16 px Source Sans, 28rem at
+     14 px (NOTES, "Line lengths") */
+  .stack-lede { grid-column: 7 / span 6; max-width: 34rem; margin-top: 0; font-size: 18px; padding-bottom: 6px; }
+  /* round 6: the logo band on the page's grid. The group label takes columns 1 to 6; the four logos take columns 7 to
+     12 (x 732 to 1376 at 1440), four equal columns of 161 px, each logo centred over its name */
+  .stack-row { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 24px; align-items: center; }
+  .stack-row > .stack-label { grid-column: 1 / span 6; }
+  .stack-row > .stack-cells { grid-column: 7 / span 6; column-gap: 0; }
+  .stack-row + .stack-row { margin-top: 0; }
+  /* round 8: the band's top edge. The same hairline above the Google Cloud row, 24 px above its tallest icon (the
+     logos' slots start 16 px into each cell, so 8 px of padding); the plate moves up 9 px so the logos stay put */
+  .stack-plate { margin-top: 55px; }
+  .stack-row--gc { border-top: 1px solid var(--st-rule); padding-top: 8px; }
+  .stack-label { padding: 0; }
+  .stack-cells li { min-height: 96px; justify-content: center; padding: 16px 0; }
+  .stack-claims { margin-top: 104px; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 24px; row-gap: 40px; }
+  /* round 7: each body's first line sits on its heading's baseline (grid baseline alignment, not a measured nudge) */
+  .stack-claims > div { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: baseline; }
+  .stack-claims dt { grid-column: 1 / span 5; font-size: 28px; }
+  .stack-claims dd { grid-column: 7 / span 6; max-width: 34rem; margin-top: 0; font-size: 18px; }
+  /* round 8: every body holds three lines (3 x 1.6em, 86.4 px at 18 px), so the five headings step evenly, 132 px
+     apart, even where a body sets two. (The review asked for 92 px from a 30.6 px line; the line is 28.8 px, and 92
+     measured 137 px steps, so the box is three of the real lines) */
+  .stack-claims dd { min-height: calc(3 * 1.6em); }
+  /* round 6, refined in round 7: the mark's spine. The mark (t01) is five bands split by one thin vertical line that sits
+     in the gap between the half bands, the same distance from each, and runs from the top edge of the first band to
+     the bottom edge of the last. The five claims are split the same way: one hairline at the centre of column 6, the
+     empty column between the headings (columns 1 to 5) and the bodies (7 to 12), so it stands apart from both instead
+     of hugging the body like a quote bar; it starts at the first heading's cap height and ends on the last body's
+     last baseline (--spine-top, --spine-end, measured: NOTES, round 7) */
+  .stack-claims { position: relative; --spine-top: 3px; --spine-end: 11px; }
+  .stack-claims::before { content: ""; position: absolute; top: var(--spine-top); bottom: var(--spine-end);
+    left: calc((100% - 11 * 24px) / 12 * 5.5 + 5 * 24px - 0.5px); width: 1px;
+    background: color-mix(in srgb, var(--st-rule) 45%, var(--st-steel)); pointer-events: none; }
+  /* round 8, the signature: the mark's equator on the spine. In the mark (mark.svg, 256 units) the spine runs from y 28
+     to 228, and the equator, the widest and heaviest band pair (108 by 16 units each side, 8.67 units off the spine),
+     sits at its exact middle, y 128. The column rule carries the same pair at its own middle, which falls in the third
+     of the five claims: drawn from the mark's own two rects, unaltered in proportion, at 3 px tall (16 units), so
+     20.3 by 3 px each side, 1.6 px off the line, 44.4 px across, half the empty column. (At the scale that makes the
+     mark's spine our 1 px rule it would be 6 px tall and fill the column; rendered, it read as a control, not a
+     line.) The rule's colour, one mask, no new colour */
+  /* round 9: the equator is drawn as one continuous 48 by 1 px line, centred on the rule and crossing it, in the rule's
+     colour. The round 8 pair of bands, 1.6 px either side of the line, read as a broken glyph ("- -") with a gap where
+     the rule crosses, so the pair became the one line it stands for; the rule stays visible through the crossing */
+  .stack-claims::after { content: ""; position: absolute; width: 48px; height: 1px;
+    top: calc(50% + (var(--spine-top) - var(--spine-end)) / 2 - 0.5px);
+    left: calc((100% - 11 * 24px) / 12 * 5.5 + 5 * 24px - 24px);
+    background: color-mix(in srgb, var(--st-rule) 45%, var(--st-steel)); pointer-events: none; }
+  /* round 5: 64 px from the last claim body's last text line to the certifications rule (was 120) */
+  /* round 7: the certifications follow the claims' grammar, heading on the left at x 64, its vendor lines on the right;
+     the heading's baseline meets the first vendor link's, and the rule spans both columns as the logo band's do */
+  .stack-certs { margin-top: 48px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 24px;
+    padding-top: 24px; border-top: 1px solid var(--st-rule); align-items: baseline; }
+  .stack-certs-h { grid-column: 1 / span 5; grid-row: 1; font-size: 28px; }
+  .stack-certs ul { grid-column: 7 / span 6; grid-row: 1; max-width: 34rem; margin-top: 0; }
+  .stack-list { font-size: 18px; }
+  .stack-fine { grid-column: 7 / span 6; grid-row: 2; max-width: 28rem; }
+}
+@media (prefers-reduced-motion: reduce) { .stack-certs a { transition: none; } }
+@media (forced-colors: active) { .stack-row { border-color: CanvasText; } .stack-claims::before, .stack-claims::after { background: CanvasText; } }
