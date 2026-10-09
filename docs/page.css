@@ -3,8 +3,11 @@
    12-column grid; every screen one headline and at most one short line; proof set like a specification.
    Themes (U30): dark, the Graphite ground with the plasma sphere; light, the Alloy ground with the sphere as Graphite
    ink. [data-theme] is set before first paint by the head script; without JavaScript the system setting picks.
-   Type: Funnel Display 400 for display and the wordmark, Funnel Sans for text; Martian Mono only for the proof
-   figures' sources (machine readouts). Scale: 14, 17, 20, 26, 34, 48, 64, 88, 120. Space: 4, 8, 16, 24, 40, 64, 104,
+   v3-r5 (Fri 9 Oct 2026), type T2 Catalogue (U35, from type/t2c.html): HHL Equator 300 for display (Newsreader at
+   opsz 72 with the wordmark's equator arm in E and F), Newsreader 400 for reading text, Equator italic 300 for the coda
+   (the one recurring device), Source Sans 3 only for buttons, labels, captions, sources and the product names; the
+   Hairline wordmark (B62) as outlines (wordmark/). Light ground: warm grey rice paper (not cream) with a faint grain.
+   Scale: 12, 14, 16, 17, 18, 20, 27, 36, 48, 58, 64, 76, 88, 104. Space: 4, 8, 16, 24, 40, 64, 104,
    160. Radius 2 px; the theme toggle is round. Buttons are monochrome (B51). */
 
 :root {
@@ -37,12 +40,12 @@
   --safe-br: 72px;         /* the bottom-right corner stays clear: the published site's Back bar */
   --gap: 104px;
 
-  --display: "Funnel Display", "Funnel Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --sans: "Funnel Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --mono: "Martian Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --display: "HHL Equator", "Newsreader", Georgia, serif;
+  --text: "Newsreader", Georgia, serif;
+  --sans: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;   /* controls, labels, captions only */
   --s1: 4px; --s2: 8px; --s3: 16px; --s4: 24px; --s5: 40px; --s6: 64px; --s7: 104px; --s8: 160px;
   /* the display sizes: phone first, then 960 and 1200 */
-  --t-h1: 48px; --t-h2: 48px; --t-body: 17px;
+  --t-h1: 48px; --t-h2: 42px; --t-body: 17px; --t-coda: 21px; --t-close: 36px;
   /* the mark, the thin spine (t01, B57): ONE file reference; page.js reads it here for the particle targets too */
   --mark-src: url("mark.svg");
   --fade: 300ms;
@@ -52,18 +55,18 @@
 
 /* light: Alloy ground, Graphite ink, the sphere as ink lines */
 :root[data-theme="light"] {
-  --ground: #EBEDEC;       /* Alloy */
-  --raised: #F6F7F6;       /* Paper */
+  --ground: #E7E5E1;       /* rice paper (U35: warm grey, not cream) */
+  --raised: #F2F1ED;
   --ink: #15171A;          /* 15.3:1 on Alloy */
   --ink-2: #33373C;        /* reading text: 10.2:1 */
   --steel: #5A5F66;        /* 5.5:1 */
-  --rule: #CDD0CF;
+  --rule: #CFCCC6;
   --lead: rgba(90, 95, 102, 0.6);
   --btn: #15171A; --on-btn: #F6F7F6;          /* 16.7:1 */
   --btn-hover: #2E3237; --btn-press: #3A3F45;
   --quiet-line: rgba(21, 23, 26, 0.5);        /* 3.2:1 on Alloy */
   --quiet-line-hi: rgba(21, 23, 26, 0.78);
-  --veil: rgba(235, 237, 236, 0.66);
+  --veil: rgba(231, 229, 225, 0.66);
   --wash: rgba(21, 23, 26, 0.06);
   --wash-2: rgba(21, 23, 26, 0.12);
   --focus: #15171A;
@@ -73,9 +76,9 @@
 :root[data-theme="light"][data-scheme="plasma"] { --btn-hover: #24304F; --btn-press: #313C5C; --focus: #24304F; --sp: #7F8CFF; --sp-spark: #7F8CFF; }
 :root[data-theme="light"][data-scheme="coral"] { --sp: #B5384F; --sp-spark: #B5384F; }
 @media (prefers-color-scheme: light) {
-  :root:not([data-theme]) { --ground: #EBEDEC; --raised: #F6F7F6; --ink: #15171A; --ink-2: #33373C; --steel: #5A5F66; --rule: #CDD0CF;
+  :root:not([data-theme]) { --ground: #E7E5E1; --raised: #F2F1ED; --ink: #15171A; --ink-2: #33373C; --steel: #5A5F66; --rule: #CFCCC6;
     --btn: #15171A; --on-btn: #F6F7F6; --btn-hover: #2E3237; --btn-press: #3A3F45; --quiet-line: rgba(21, 23, 26, 0.5);
-    --quiet-line-hi: rgba(21, 23, 26, 0.78); --veil: rgba(235, 237, 236, 0.66); --focus: #15171A; color-scheme: light; }
+    --quiet-line-hi: rgba(21, 23, 26, 0.78); --veil: rgba(231, 229, 225, 0.66); --focus: #15171A; color-scheme: light; }
 }
 
 /* the grid: phones are a layout of their own (the left margin holds scene 6's marker); 12 columns from 960 px */
@@ -83,9 +86,11 @@
 @media (min-width: 960px) {
   :root { --mm: 40px; --gut: 24px; --gap: 160px; --head: 88px;
     --m: max(var(--mm), calc((100vw - 1312px)/2)); --mr: var(--m);
-    --t-h1: 88px; --t-h2: 64px; --t-body: 20px; }
+    --t-h1: 88px; --t-h2: 64px; --t-body: 18px; --t-coda: 25px; --t-close: 52px; }
 }
-@media (min-width: 1200px) { :root { --mm: 64px; --t-h1: 120px; --t-h2: 88px; } }
+/* REVIEW-t2c finding 2: from 1024 px the reading text is 20 px on a 1.5 line */
+@media (min-width: 1024px) { :root { --t-body: 20px; } }
+@media (min-width: 1200px) { :root { --mm: 64px; --t-h1: 104px; --t-h2: 76px; --t-coda: 27px; --t-close: 58px; } }
 /* short desktop screens (a 1280 x 720 or 1366 x 768 laptop): the display steps down so every stage's words fit */
 @media (min-width: 960px) and (max-height: 820px) { :root { --t-h1: 88px; --t-h2: 64px; --t-body: 18px; } }
 @media (min-width: 960px) and (max-height: 660px) { :root { --t-h1: 72px; --t-h2: 48px; --t-body: 17px; } }
@@ -94,7 +99,7 @@
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; background: var(--ground); }
 body {
   margin: 0; background: var(--ground); color: var(--ink);
-  font: 400 16px/1.6 var(--sans); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+  font: 400 17px/1.6 var(--text); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
   overflow-x: clip; font-synthesis: none; hanging-punctuation: first allow-end last;
   font-kerning: normal; font-optical-sizing: auto;
 }
@@ -152,10 +157,12 @@ body { -webkit-tap-highlight-color: transparent; }
 .lk { display: flex; align-items: center; }
 .mark { display: block; flex: none; background: currentColor;
   -webkit-mask: var(--mark-src) center / contain no-repeat; mask: var(--mark-src) center / contain no-repeat; }
-.wm { font-family: var(--display); font-weight: 400; letter-spacing: 0.04em; white-space: nowrap; }
+/* the Hairline wordmark (B62): outlines from wordmark/word.svg, sized by height (its viewBox is 136 units tall for the
+   128-unit cap). The close uses its own heavier cut (wordmark/word-close.svg) */
+svg.wm { display: block; flex: none; overflow: visible; color: inherit; }
 .top .lk { gap: 10px; }
 .top .mark { width: 32px; height: 32px; margin-left: -2px; }
-.top .wm { font-size: 17px; line-height: 1; }
+.top .wm { height: 15px; width: auto; aspect-ratio: 1299.71 / 136; }
 /* one primary action per view (v3-r2): on a phone the hero's own "Talk to an engineer" is the only button on the first
    screen, so the header's "Talk to us" waits for a wider screen */
 @media (max-width: 767px) { .top .talk { display: none; } .top-end { margin-right: -10px; } }
@@ -179,7 +186,7 @@ body { -webkit-tap-highlight-color: transparent; }
 
 /* ---------- buttons: one primary per view, monochrome (B51); the rest quiet outlines ---------- */
 .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 52px; padding: 0 28px;
-  font: 500 17px/1.2 var(--sans); text-decoration: none; text-align: center; border-radius: 2px;
+  font: 600 17px/1.2 var(--sans); text-decoration: none; text-align: center; border-radius: 2px;
   border: 1px solid transparent; cursor: pointer;
   transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease; }
 .btn.primary { background: var(--btn); color: var(--on-btn); }
@@ -190,7 +197,7 @@ body { -webkit-tap-highlight-color: transparent; }
 .btn.quiet:hover { border-color: var(--quiet-line-hi); background: var(--wash); }
 .btn.quiet:active { background: var(--wash-2); border-color: var(--quiet-line-hi); }
 .btn.small { min-height: 44px; padding: 0 16px; font-size: 14px; }
-.text-link { display: inline-flex; align-items: center; min-height: 44px; font-weight: 500; font-size: var(--t-body); color: var(--ink);
+.text-link { display: inline-flex; align-items: center; min-height: 44px; font: 600 var(--t-body)/1.2 var(--sans); color: var(--ink);
   text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; text-decoration-color: var(--quiet-line);
   border-radius: 2px; transition: text-decoration-color 160ms ease; }
 .text-link:hover { text-decoration-color: var(--ink); }
@@ -208,10 +215,18 @@ main { position: relative; z-index: 2; }
 .js .op { opacity: calc(var(--t, 1) * var(--g, 1) * var(--b, 1)); }
 .scene { position: relative; }
 .words { position: relative; }
-h1 { font: 400 var(--t-h1)/1 var(--display); letter-spacing: -0.03em; text-wrap: balance; }
-h2 { font: 400 var(--t-h2)/1.02 var(--display); letter-spacing: -0.028em; text-wrap: balance; }
-h3 { font: 500 20px/1.3 var(--display); letter-spacing: -0.005em; text-wrap: balance; }
-.body, .standfirst { margin-top: var(--s4); font-size: var(--t-body); line-height: 1.5; color: var(--ink-2); max-width: 26em; text-wrap: pretty; }
+h1 { font: 300 var(--t-h1)/1.02 var(--display); letter-spacing: -0.012em; text-wrap: balance; font-variation-settings: "opsz" 72; }
+h2 { font: 300 var(--t-h2)/1.04 var(--display); letter-spacing: -0.01em; text-wrap: balance; font-variation-settings: "opsz" 72; }
+h3 { font: 400 20px/1.3 var(--text); letter-spacing: 0; text-wrap: balance; }
+.body, .standfirst { margin-top: var(--s4); font: 400 var(--t-body)/1.55 var(--text); color: var(--ink-2); max-width: 26em; text-wrap: pretty; }
+@media (min-width: 1024px) { .body, .standfirst { line-height: 1.5; } }
+/* the coda (U35): one italic Equator line on the text's own axis, the one recurring device (layers, any size, close) */
+.coda { margin-top: 22px; font: italic 300 var(--t-coda)/1.28 var(--display); letter-spacing: -0.004em; color: var(--ink); max-width: 21em; text-wrap: balance; }
+.body + .coda { margin-top: 18px; }
+.body.coda { font: italic 300 var(--t-coda)/1.28 var(--display); color: var(--ink); max-width: 21em; text-wrap: balance; }
+/* the paper (light): a faint fixed grain, multiplied */
+:root[data-theme="light"] body::after { content: ""; position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0.45; mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.42 0 0 0 0 0.40 0 0 0 0 0.37 0 0 0 0.16 0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E"); }
 
 /* ---------- 1. the hero (not pinned; orbit controls live here only) ---------- */
 /* phone: the sphere fills the space under the header, bleeding off the right edge; the words sit at the foot of the
@@ -241,7 +256,7 @@ h3 { font: 500 20px/1.3 var(--display); letter-spacing: -0.005em; text-wrap: bal
 .js .layers li { grid-area: 1 / 1; }
 .band-names { position: absolute; left: 0; top: 0; width: 0; height: 0; }
 .band-names > span { position: absolute; left: 0; top: 0; width: max-content; display: block; will-change: transform, opacity; }
-.band-names b { display: block; font: 500 14px/1.3 var(--sans); color: var(--ink-2); transition: color 200ms ease; }
+.band-names b { display: block; font: 400 16px/1.3 var(--sans); color: var(--ink-2); transition: color 200ms ease; }
 .band-names i { display: none; font-style: normal; }
 .band-names > span.lit b { color: var(--ink); }
 
@@ -253,24 +268,34 @@ h3 { font: 500 20px/1.3 var(--display); letter-spacing: -0.005em; text-wrap: bal
 /* a specification on every screen: the figure in a fixed column, its caption beside it on the same baseline */
 .fact { display: grid; grid-template-columns: 8.5rem minmax(0, 1fr); column-gap: var(--s3); align-items: baseline; width: 100%; min-height: 44px; padding: 14px 0; text-align: left;
   background: none; border: 0; border-bottom: 1px solid var(--rule); color: var(--ink); font: inherit; cursor: pointer; border-radius: 0; }
-.fact .fig { display: block; font: 400 28px/1.05 var(--display); letter-spacing: -0.02em; color: var(--ink); white-space: nowrap;
-  font-variant-numeric: tabular-nums lining-nums; }
-.fact .cap { display: block; font: 400 15px/1.4 var(--sans); color: var(--ink-2);
+.fact .fig { display: block; font: 300 30px/1.05 var(--text); letter-spacing: -0.01em; color: var(--ink); white-space: nowrap;
+  font-variation-settings: "opsz" 72; font-variant-numeric: proportional-nums lining-nums; }
+.fact .cap { display: block; font: 400 16px/1.4 var(--sans); color: var(--ink-2);
   text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 5px; transition: text-decoration-color 160ms ease; }
 .fact:hover .cap { text-decoration-color: var(--quiet-line); }
 .fact:active .cap { color: var(--ink); }
 .fact:focus-visible { outline-offset: 2px; }
-.src { padding: var(--s2) 0 var(--s3); font: 400 12px/1.6 var(--mono); letter-spacing: 0; color: var(--steel); }
+.src { padding: var(--s2) 0 var(--s3); font: 400 13px/1.6 var(--sans); letter-spacing: 0; color: var(--steel); }
 /* the proof: our figures, then the platform under them (C14), in one place, one at a time */
 .proof { display: grid; gap: var(--s5); }
 .js .proof { gap: 0; }
 .js .proof > * { grid-area: 1 / 1; }
 .platform { margin-top: var(--s4); padding-top: var(--s4); border-top: 1px solid var(--rule); align-self: start; }
-.platform h3 { font: 400 26px/1.1 var(--display); letter-spacing: -0.015em; color: var(--ink); }
+.platform h3 { font: 300 28px/1.1 var(--display); letter-spacing: -0.01em; color: var(--ink); font-variation-settings: "opsz" 72; }
 .platform .body { margin-top: var(--s3); }
 /* the platform's small print: Google Cloud's audits, named as Google Cloud's (PLATFORM.md) */
-.certs { margin-top: var(--s3); max-width: 30em; font-size: 15px; line-height: 1.5; color: var(--steel); text-wrap: pretty; }
+.certs { margin-top: var(--s3); max-width: 30em; font-family: var(--sans); font-size: 15px; line-height: 1.5; color: var(--steel); text-wrap: pretty; }
 .platform .text-link { margin-top: var(--s1); font-size: 15px; }
+/* B63: Google Cloud's own logo (123 x 20, about 6.15:1) under the line that names Google Cloud. Never altered: no
+   filter, recolour or crop; the night theme shows the reversed file. Clear space: at least the cloud icon's height
+   (about 0.8 of the logo's height) on every side. 20 px tall on a phone, 24 on a desktop: the cap height of the text
+   beside it, so it sits in the paragraph's rhythm, not as a badge */
+.gc-logo { display: block; margin: 20px 0; line-height: 0; }
+.gc-logo img { display: block; height: 20px; width: auto; }
+.gc-night { display: none !important; }
+:root:not([data-theme="light"]) .gc-day { display: none !important; }
+:root:not([data-theme="light"]) .gc-night { display: block !important; }
+@media (min-width: 960px) { .gc-logo { margin: 24px 0; } .gc-logo img { height: 24px; } }
 
 /* scene 4 (and scene 2's phone swap): two beats in one place */
 .swap { display: grid; gap: var(--s5); }
@@ -283,8 +308,8 @@ h3 { font: 500 20px/1.3 var(--display); letter-spacing: -0.005em; text-wrap: bal
    step's line, one at a time in one place; the sphere (300 px at 874 high, 55%) in the lower half under them */
 .steps { list-style: none; margin-top: var(--s4); display: grid; gap: var(--s4); }
 .steps li { position: relative; }
-.steps h3 { font: 400 34px/1.05 var(--display); letter-spacing: -0.02em; transition: color 220ms ease; }
-.steps p { margin-top: var(--s2); color: var(--ink-2); font-size: var(--t-body); line-height: 1.5; max-width: 24em; text-wrap: pretty; transition: color 220ms ease; }
+.steps h3 { font: 300 34px/1.05 var(--display); letter-spacing: -0.01em; transition: color 220ms ease; font-variation-settings: "opsz" 72; }
+.steps p { margin-top: var(--s2); color: var(--ink-2); font: 400 var(--t-body)/1.5 var(--text); max-width: 24em; text-wrap: pretty; transition: color 220ms ease; }
 .js .steps li:not(.on) h3, .js .steps li:not(.on) p { color: var(--steel); }
 .step-track { display: none; }
 @media (max-width: 959px) {
@@ -292,7 +317,7 @@ h3 { font: 500 20px/1.3 var(--display); letter-spacing: -0.005em; text-wrap: bal
   .js .work .stage { justify-content: flex-start; padding-top: calc(var(--safe-t) + 56px); }
   .js .work .stage .art { flex: 0 0 0; min-height: 0; }
   .js .step-track { position: relative; display: flex; gap: var(--s4); margin-top: var(--s5); padding-bottom: 12px; border-bottom: 1px solid var(--rule); }
-  .step-track span { font: 500 17px/1.2 var(--sans); color: var(--steel); transition: color 200ms ease; }
+  .step-track span { font: 600 17px/1.2 var(--sans); color: var(--steel); transition: color 200ms ease; }
   .step-track span.on { color: var(--ink); }
   .step-track .bar { position: absolute; left: 0; bottom: -1px; height: 2px; width: 0; background: var(--ink);
     transition: transform 260ms cubic-bezier(0.2, 0, 0, 1), width 260ms cubic-bezier(0.2, 0, 0, 1); }
@@ -310,8 +335,13 @@ h3 { font: 500 20px/1.3 var(--display); letter-spacing: -0.005em; text-wrap: bal
 .final { color: var(--ink); }
 .final .lk { flex-direction: column; gap: var(--s3); }
 .final .mark { width: 72px; height: 72px; }
-.final .wm { font-size: 26px; line-height: 1; }
-.close .line { margin-top: var(--s5); max-width: 9em; }
+/* the close's word: its own heavier cut (REVIEW-t2c finding 1; wordmark/word-close.svg, 141 units tall), with the
+   Glint's layers stacked exactly over it (page.js glint) */
+.final .wm-box { position: relative; display: block; flex: none; height: 24px; aspect-ratio: 1354.71 / 141; }
+.final .wm-box > svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.final .wm-glint { pointer-events: none; opacity: 0; }
+.close .line { margin-top: var(--s5); max-width: 11em; font: italic 300 var(--t-close)/1.1 var(--display); letter-spacing: -0.01em; }
+.close .tagline { margin-top: var(--s3); max-width: 20em; font: 400 var(--t-body)/1.5 var(--text); color: var(--steel); text-wrap: balance; }
 .close .actions { margin-top: var(--s5); justify-content: center; align-items: center; column-gap: var(--s4); flex-direction: column; row-gap: var(--s2); }
 @media (min-width: 600px) { .close .actions { flex-direction: row; } }
 /* phones: the close is one centred column, the footer in the flow under it (each footer row narrower than the screen
@@ -321,9 +351,17 @@ h3 { font: 500 20px/1.3 var(--display); letter-spacing: -0.005em; text-wrap: bal
 .foot { flex: none; display: flex; flex-direction: column; align-items: center; text-align: center; margin-top: var(--s4); }
 .foot .ours { flex-direction: column; row-gap: var(--s2); }
 .foot .prods { flex-direction: column; row-gap: 12px; }
-.legal { font-size: 14px; line-height: 1.5; color: var(--steel); }
+.legal { font: 400 14px/1.5 var(--sans); color: var(--steel); }
 .legal a { display: inline-flex; align-items: center; min-height: 44px; color: var(--ink-2); text-underline-offset: 4px; }
 .legal a:hover { color: var(--ink); }
+/* the Glint's spine flare: a line of light on the mark's own spine as the light gathers and leaves it */
+.final .lk { position: relative; }
+.final .mark-spark { position: absolute; left: 0; top: 0; width: 2px; height: 0; opacity: 0; pointer-events: none; border-radius: 1px;
+  background: #FFFFFF; box-shadow: 0 0 6px 1px rgba(195, 203, 234, 0.9), 0 0 18px 4px rgba(143, 155, 208, 0.45); }
+:root[data-theme="light"] .final .mark-spark { background: #2E3A66; box-shadow: 0 0 4px 0 rgba(46, 58, 102, 0.5); }
+/* the footer row: the email and the theme switch again (review finding 6, U30), each a 44 px target */
+.foot-row { display: flex; align-items: center; gap: var(--s2); }
+.foot-mode { color: var(--ink-2); }
 /* our own products (C14, B59): each product's own lockup, black and white, its green period blinking as brand styling
    (no status claim); the files' exact colours: white on Graphite, Graphite on light with a white counter */
 .ours { display: flex; flex-wrap: wrap; align-items: center; column-gap: var(--s4); row-gap: var(--s2); }
@@ -332,7 +370,8 @@ h3 { font: 500 20px/1.3 var(--display); letter-spacing: -0.005em; text-wrap: bal
 .prod .pm { display: block; width: 20px; height: 20px; flex: none; }
 .prod .pm .o { fill: #FFFFFF; }
 .prod .pm .i { fill: #15171A; }
-.pw { font: 500 12.5px/1 "Saira", var(--sans); font-stretch: 125%; letter-spacing: 0.14em; white-space: nowrap; }
+/* the product names in the page's own type (U35): Source Sans 3, in the capitals each product's lockup sets */
+.pw { font: 600 12.5px/1 var(--sans); letter-spacing: 0.1em; white-space: nowrap; }
 .pw .dot { display: inline-block; width: 5px; height: 5px; margin-left: 1px; background: #4BF097; animation: hb-blink 1.1s steps(1) infinite; }
 @keyframes hb-blink { 50% { opacity: 0; } }
 /* The three chat dots roll as a wave, one after the other (brands/README.md, hb-dot): up 2.4 px at the
@@ -382,7 +421,7 @@ html:not(.js) .close { min-height: 100svh; padding-bottom: var(--s8); }
   .top { padding: 0 var(--m); }
   .top .lk { gap: 14px; }
   .top .mark { width: 36px; height: 36px; }
-  .top .wm { font-size: 20px; }
+  .top .wm { height: 18px; }
   .top-end { gap: var(--s3); }
 
   h1 { line-height: 0.96; letter-spacing: -0.035em; }
@@ -440,8 +479,9 @@ html:not(.js) .close { min-height: 100svh; padding-bottom: var(--s8); }
   .close-in { grid-column: 1 / -1; margin-top: -6svh; }
   .final .lk { gap: var(--s4); }
   .final .mark { width: 104px; height: 104px; }
-  .final .wm { font-size: 34px; }
-  .close .line { margin-top: var(--s6); max-width: none; font-size: 64px; letter-spacing: -0.03em; }
+  .final .wm-box { height: 36px; }
+  .close .line { margin-top: var(--s5); max-width: none; }
+  .close .tagline { max-width: none; }
   .close .actions { gap: var(--s3); }
   .foot { position: absolute; left: var(--m); right: var(--safe-br); bottom: var(--s4); margin: 0; flex-direction: row; flex-wrap: wrap;
     align-items: center; text-align: left; column-gap: var(--s4); row-gap: 0; }
@@ -454,10 +494,10 @@ html:not(.js) .close { min-height: 100svh; padding-bottom: var(--s8); }
      own under the bands) */
   [data-close="centred"] .final .lk { flex-direction: column; align-items: center; gap: 0; }
   [data-close="centred"] .final .mark { width: 120px; height: 120px; }
-  [data-close="centred"] .final .wm { font-size: 40px; margin-top: -3px; letter-spacing: 0.04em; }
+  [data-close="centred"] .final .wm-box { height: 40px; margin-top: 4px; }
   [data-close="lockup"] .final .lk { flex-direction: row; gap: 32px; }
   [data-close="lockup"] .final .mark { width: 96px; height: 96px; }
-  [data-close="lockup"] .final .wm { font-size: 56px; letter-spacing: 0.04em; }
+  [data-close="lockup"] .final .wm-box { height: 50px; }
 }
 
 /* ---------- reduced motion: no pinning; each scene is a still of its pose beside its words ---------- */

@@ -21,11 +21,16 @@
 //   opens with the five bands, carries the sparks and the rebirth's pulse, and becomes the mark's own line at the close.
 //   No line grows from the header mark or runs down the page. Near words it fades out over 160 px (v3-r3), never cut.
 //
+// v3-r5 integration (Fri 9 Oct 2026, on v3-r5-live's fixes): camera.js, close-ups on the phoenix between the wide
+// shots (M38); the W3 Glint carries the Hairline name in at the close (B62) and the tagline (C15) follows it; T2
+// Catalogue type (U35); the fh8 bird (bird.js); the Google Cloud logo (B63); a second theme switch in the footer.
+//
 // Test hooks: ?scene=<1..7>&p=<0..1> jumps to that scene's progress (no smoothing) · ?t=<s> holds the hero's loop ·
 // &calm=1 or &bright=1 pins the stillness level · &reduced=1 · &nofield=1 · &q=0..4 · &bench=1 then __bench(n) ·
 // __story() reports the scene, p and the frame time · __goto(n, p) jumps · __hero.birdState the bird's loop time.
 import { createHero } from './hero.js';
 import { BIRD } from './bird.js';
+import { createCamera } from './camera.js';
 
 const Q = new URLSearchParams(location.search);
 const reduced = Q.get('reduced') === '1' || matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -68,7 +73,7 @@ const markReady = fetch(markSrc).then(r => r.text()).then(txt => {
 const root = document.documentElement;
 const theme = () => root.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
 const scheme = () => root.getAttribute('data-scheme') || 'plasma';
-const ALLOY = [0.922, 0.929, 0.925], GRAPHITE = [0.0824, 0.0902, 0.1020];
+const ALLOY = [0.906, 0.898, 0.882],   /* v3-r5: the rice paper #E7E5E1 (U35) */ GRAPHITE = [0.0824, 0.0902, 0.1020];
 function hex(h){ return [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)/255); }
 const SCHEMES = {
   plasma: { ink: [0.55, 0.70, 1.0], ink2: [0.80, 0.62, 1.0], tint: [0.86, 0.91, 1.0], pillar: [0.82, 0.88, 1.0], spark: [1.0, 0.97, 0.9],
@@ -82,10 +87,11 @@ const lookOf = () => ({ axisK: 0, ...SCHEMES[scheme()] || SCHEMES.plasma, day: t
   bgC: [0.0824, 0.0902, 0.1020], bgE: [0.0742, 0.0812, 0.0918], dayBg: ALLOY, dayInk: GRAPHITE, inkMax: 0.8 });
 const metaTheme = $('meta[name="theme-color"]');
 function store(k, v){ try { localStorage.setItem(k, v); } catch (e) {} }
-const modeBtn = $('#mode');
+// v3-r5 (review finding 6, U30): the switch is in the header and again in the footer row, beside the email
+const modeBtn = $('#mode'), modeBtns = $$('.mode');
 function syncMode(){
-  const t = theme(); metaTheme && metaTheme.setAttribute('content', t === 'light' ? '#EBEDEC' : '#15171A');
-  if (modeBtn) { modeBtn.setAttribute('aria-pressed', String(t === 'dark')); modeBtn.setAttribute('title', t === 'dark' ? 'Switch to the light theme' : 'Switch to the dark theme'); }
+  const t = theme(); metaTheme && metaTheme.setAttribute('content', t === 'light' ? '#E7E5E1' : '#15171A');
+  for (const b of modeBtns) { b.setAttribute('aria-pressed', String(t === 'dark')); b.setAttribute('title', t === 'dark' ? 'Switch to the light theme' : 'Switch to the dark theme'); }
 }
 let onLook = () => {};
 function setTheme(t, how = 'fade'){
@@ -100,19 +106,18 @@ function setTheme(t, how = 'fade'){
 }
 syncMode();
 // A choice is remembered only while it differs from the system's: toggling back to what the system
-// prefers forgets it, so the page follows the system again (Tim, 9 Oct: "detect system dark or light").
+// prefers forgets it, so the page follows the system again (Tim, 9 Oct; ported from v3-r5-live 9c19c15a).
 const systemTheme = () => (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-if (modeBtn) modeBtn.addEventListener('click', () => {
+for (const b of modeBtns) b.addEventListener('click', () => {
   const t = theme() === 'dark' ? 'light' : 'dark';
   if (t === systemTheme()) { try { localStorage.removeItem('hhl-theme'); } catch (e) {} } else store('hhl-theme', t);
   setTheme(t);
 });
 { let chosen = Q.has('theme'); try { chosen = chosen || !!localStorage.getItem('hhl-theme'); } catch (e) {}
-  // Kept on window: a MediaQueryList nothing references can be collected with its listener, and the
-  // page then stops following the system (measured 9 Oct: the change event never reached it).
+  // Kept on window: a MediaQueryList nothing references can be collected with its listener.
   const mq = (window.__hhlSystemTheme = matchMedia('(prefers-color-scheme: light)'));
   mq.addEventListener && mq.addEventListener('change', e => { if (!chosen) setTheme(e.matches ? 'light' : 'dark'); });
-  if (modeBtn) modeBtn.addEventListener('click', () => { try { chosen = !!localStorage.getItem('hhl-theme'); } catch (e) { chosen = true; } }); }
+  for (const b of modeBtns) b.addEventListener('click', () => { try { chosen = !!localStorage.getItem('hhl-theme'); } catch (e) { chosen = true; } }); }
 window.__theme = (t, how) => setTheme(t, how);
 
 // ---------- the engine ----------
@@ -129,6 +134,8 @@ try {
 if (!hero) document.documentElement.classList.add('no-gl');
 else if (!reduced) orbit.hidden = false;
 if (hero) markReady.then(() => MARK.rects.length && hero.setMarkRects(MARK.rects));
+const camera = createCamera({ hero, query: Q });
+window.__camera = () => camera.state;
 onLook = cut => { if (!hero) return; hero.setLook(lookOf(), cut || reduced); if (reduced) renderStills(); };
 
 // ---------- the scenes ----------
@@ -305,7 +312,7 @@ const POSES = {
       const ink = inkOf(5), gapTo = (ink ? ink.x0 : vw*0.58) - 64;
       base = bleedLeft(0.3, gapTo - 8);
       const Rf = Math.min(vh*0.7, gapTo*0.7);
-      fill = [gapTo - Rf, vh*0.5, Rf];
+      fill = [gapTo - Rf - 120, vh*0.5, Rf];   // v3-r5 (REVIEW-t2c finding 3, M19): 120 px left, so the rim never crosses the headline
     } else {
       const A = artBox(5); base = phoneFrame(5);
       const Rf = Math.min(vw*0.7, A.h*0.66);
@@ -481,21 +488,76 @@ function buildTimelines(){
 const CLOSE_HOLD = 0.40, glow = { k: 1 };
 let CLOSE_IN = 0.42, CLOSE_OUT = 0.38, h7 = 0.9;
 let closeOn = null, closeLog = [];
-const closeEls = () => [...$$('.final .wm'), $('.close .actions')].filter(Boolean);
+// v3-r5 integration: the name arrives by the W3 Glint (B62) as the glow decays: one light leaves the mark's spine and
+// crosses the name over 900 ms (ease in and out), leaving it at full ink; the tagline (C15) and the actions follow at
+// 600 ms in one 300 ms fade. Back up past the threshold, all of it goes at once, as before.
+const closeEls = () => [$('.close .tagline'), $('.close .actions')].filter(Boolean);
+const glint = { k: 0 }, wmBase = () => $('.final .wm-box > .wm'), wmGlint = () => $('.final .wm-glint');
 function closeText(on, now = false){
   if (on === closeOn) return; closeOn = on;
-  const els = closeEls(); if (!els.length || !gsap) return;
+  const els = closeEls(), base = wmBase(); if (!els.length || !gsap) return;
   closeLog.push({ on, t: Math.round(performance.now()) }); if (closeLog.length > 50) closeLog.shift();
-  // in: one 300 ms fade. Out: at once, so no word is left over the sphere as it opens out again on a fast scroll up
-  if (now || !on) { gsap.set(els, { opacity: on ? 1 : 0, overwrite: true }); gsap.set(glow, { k: on ? 0 : 1, overwrite: true }); }
-  else { gsap.to(els, { opacity: 1, duration: 0.3, ease: 'power2.out', overwrite: true });
-    gsap.to(glow, { k: 0, duration: 0.6, ease: 'power2.out', overwrite: true }); }
+  gsap.killTweensOf([glint, glow, ...els, base].filter(Boolean));
+  if (now || !on) { gsap.set([...els, base].filter(Boolean), { opacity: on ? 1 : 0, overwrite: true }); gsap.set(glow, { k: on ? 0 : 1, overwrite: true });
+    glint.k = on ? 1 : 0; drawGlint(); return; }
+  gsap.set([...els, base].filter(Boolean), { opacity: 0 });
+  gsap.to(glow, { k: 0, duration: 0.6, ease: 'power2.out', overwrite: true });
+  gsap.to(glint, { k: 1, duration: 0.9, ease: 'power1.inOut', onUpdate: drawGlint, onComplete(){ if (base) base.style.opacity = '1'; drawGlint(); } });
+  gsap.to(els, { opacity: 1, duration: 0.3, ease: 'power2.out', delay: 0.6 });
 }
+// ---------- the Glint (W3, B62) ----------
+// The name is drawn three times in one place (index.html): the plain word (shown once the light has passed), the full
+// word behind the light's front (a mask that opens with it), and the light itself: a band carrying the phoenix's
+// spectrum on its trailing edge into white by night, mineral pigments into wet indigo by day. Side by side (desktop) it
+// runs from the spine rightwards; stacked (phone, ?close=centred) it opens from the centre out both ways. The mark's
+// spine flares as the light gathers on it and leaves.
+const NIGHT_HUES = ['#FF9DB0', '#FFD08A', '#9DF5C8', '#8FC8FF', '#B9A8FF'], DAY_HUES = ['#B9553F', '#C89B3C', '#3B8C73', '#2F5E9A', '#6D4C9A'];
+const WM_VB = [-9, 57.5, 1354.71, 141], WM_INK = [-2.5, 1338.21];
+function gStops(g, list){
+  if (!g) return; const x0 = WM_VB[0], span = WM_VB[2]; let last = 0, html = '';
+  for (const [x, a] of list) { const o = clamp((x - x0)/span, last, 1); last = o; html += `<stop offset="${o.toFixed(4)}" stop-color="#fff" stop-opacity="${a.toFixed(3)}"/>`; }
+  if (g.innerHTML !== html) g.innerHTML = html;
+}
+function drawGlint(){
+  const gs = wmGlint(), box = $('.final .wm-box'), lk = $('.final .lk'); if (!gs || !box || !lk) return;
+  const k = glint.k, night = theme() === 'dark', stacked = getComputedStyle(lk).flexDirection === 'column';
+  const b = stacked ? 110 : 200, SG = $('#glS'), light = $('.final .gl-light');
+  const hues = night ? NIGHT_HUES : DAY_HUES, tip = night ? '#FFFFFF' : '#2E3A66', X1 = WM_VB[0] + WM_VB[2];
+  let F, G, html = '';
+  if (!stacked) {
+    const r = box.getBoundingClientRect(), m = markBox(true), sx = WM_VB[0] + (m.lx - r.left)/Math.max(1, r.width)*WM_VB[2];
+    const f = lerp(sx, WM_INK[1] + b, k);
+    F = [[WM_VB[0], 1], [f - b, 1], [f, 0], [X1, 0]];
+    G = [[WM_VB[0], 0], [f - b, 0], [f - b*0.35, 1], [f + b*0.12, 0], [X1, 0]];
+    SG.setAttribute('x1', (f - b).toFixed(1)); SG.setAttribute('x2', f.toFixed(1));
+    hues.forEach((h, i) => { html += `<stop offset="${(i/(hues.length + 1)).toFixed(3)}" stop-color="${h}"/>`; });
+    html += `<stop offset="0.82" stop-color="${tip}"/><stop offset="1" stop-color="${tip}"/>`;
+  } else {
+    const c = (WM_INK[0] + WM_INK[1])/2, d = ((WM_INK[1] - WM_INK[0])/2 + b)*k;
+    F = [[WM_VB[0], 0], [c - d, 0], [c - d + b, 1], [c + d - b, 1], [c + d, 0], [X1, 0]];
+    G = [[WM_VB[0], 0], [c - d - b*0.12, 0], [c - d + b*0.35, 1], [c - d + b, 0], [c + d - b, 0], [c + d - b*0.35, 1], [c + d + b*0.12, 0], [X1, 0]];
+    SG.setAttribute('x1', (c - d).toFixed(1)); SG.setAttribute('x2', (c + d).toFixed(1));
+    const e = clamp(b/Math.max(1, 2*d), 0, 0.5); html = `<stop offset="0" stop-color="${tip}"/>`;
+    [...hues].reverse().forEach((h, i) => { html += `<stop offset="${(e*0.18 + e*0.8*(i + 1)/(hues.length + 1)).toFixed(4)}" stop-color="${h}"/>`; });
+    html += `<stop offset="${e.toFixed(4)}" stop-color="${tip}"/><stop offset="${(1 - e).toFixed(4)}" stop-color="${tip}"/>`;
+    hues.forEach((h, i) => { html += `<stop offset="${(1 - e + e*0.8*(i + 1)/(hues.length + 1)).toFixed(4)}" stop-color="${h}"/>`; });
+    html += `<stop offset="1" stop-color="${tip}"/>`;
+  }
+  if (SG.innerHTML !== html) SG.innerHTML = html;
+  gStops($('#glFG'), F); gStops($('#glBG'), G);
+  gs.style.opacity = k > 0 && k < 1 ? '1' : '0';
+  if (light) { light.style.opacity = (smooth(0, 0.08, k)*(1 - smooth(0.9, 1, k))).toFixed(3); light.setAttribute('filter', 'url(#glHalo)'); }   // by night a halo of light, by day the pigment bleeding into the paper like wet ink
+  const sp = $('.final .mark-spark');
+  if (sp) { const m = markBox(true), L = rel(lk);
+    sp.style.left = (m.lx - L.left - 1).toFixed(1) + 'px'; sp.style.top = (m.lt - L.top).toFixed(1) + 'px'; sp.style.height = (m.lb - m.lt).toFixed(1) + 'px';
+    sp.style.opacity = (smooth(0, 0.06, k)*(1 - smooth(0.12, 0.34, k))).toFixed(3); }
+}
+window.__glint = () => ({ glow: +glow.k.toFixed(3), glint: +glint.k.toFixed(3), closeIn: +CLOSE_IN.toFixed(3) });
 window.__close = () => ({ on: closeOn, log: closeLog.slice() });
 
 // ---------- the light kept off every word ----------
 const TEXT = '.hero-words h1, .hero-words .standfirst, .hero-words .actions > *, .top .brand, .top .talk, .top .mode, '
-  + '.stage h2, .stage .body, .layers li, .facts li, .platform h3, .certs, .text-link, .band-names b, .band-names i, .final .wm, .close .line, '
+  + '.stage h2, .stage .body, .layers li, .facts li, .platform h3, .certs, .gc-logo, .text-link, .band-names b, .band-names i, .final .wm-box, .close .line, .close .tagline, '
   + '.close .actions > *, .foot .legal, .foot .prod, .steps li, .orbit-hint';
 let textEls = [];
 // v3-r5: an element's opacity as drawn: its own and its ancestors' inline opacity, times the exit order's factors
@@ -544,7 +606,7 @@ function hideRects(){
 // The screen 48 px in from every edge (below the status bar's inset), then 64 px clear of each text block on screen,
 // on the side of it away from the sphere; in the hero, also under the header. Where the sphere runs off an edge the bird
 // may follow it out of the frame there, as a camera this close would lose it, and come back.
-const COLS = '.hero-words, .stage .words, .close .final .wm, .close .line, .close .actions, .foot, .band-names > span';
+const COLS = '.hero-words, .stage .words, .close .final .wm-box, .close .line, .close .tagline, .close .actions, .foot, .band-names > span';
 let colEls = [];
 function flightBox(frame){
   const E = 48, C = 64, H = innerHeight;
@@ -1004,6 +1066,7 @@ function update(){
     pose = mix(POSES[g.a](1), POSES[g.b](0), e); }
   pose.vis = 1;
   if (!wide && g.kind === 'blend' && pose.frame) pose.frame = phoneLift(g, t, pose.frame);
+  pose = camera.apply(pose, g, t, vw, innerHeight);   // v3-r5: the close-ups on the phoenix in the hand-overs (camera.js)
   cur = { n: sceneN, p: +p.toFixed(3), seg: g.kind, t: +t.toFixed(3) };
   if (!reduced) wordDrift();
   // v3-r3: a scene's timeline is at 0 up to and including its first pixel (it read 1 exactly at the boundary, the flash)
@@ -1023,7 +1086,7 @@ function update(){
     if (Q.get('bird') === '0') P2.bird = 0;   // test hook (tools/axis-ink.mjs): the field and the axis alone
     hero.setPose(P2);
     placeNames(pose, g.kind === 'hold' && g.a === 2 ? smooth(0, 0.04, t)*(1 - smooth(0.96, 1, t)) : 0);
-    if (pose.frame) hero.setFlight(flightBox(pose.frame));
+    if (pose.frame) hero.setFlight((pose.closeUp || 0) > 0.02 ? null : flightBox(pose.frame));   // a close camera crops the bird
     hero.setParallax(inHero);
     hero.setInteractive(inHero && !reduced);
     if (g.a === 1 && (g.kind === 'hold' || t < 0.5)) {

@@ -320,6 +320,27 @@ float inBox(vec2 p, vec4 b, float f){   // 1 inside the box (x0, y0, x1, y1 in p
 }
 float mx3(vec3 v){ return max(v.r, max(v.g, v.b)); }
 // a light's hue as ink on paper: full saturation, darkened only as far as it must be to read (about 3:1 or more on Alloy)
+// M39 (i2b, ink lab): value noise and fbm for the xuan fibre and the mist; I1's four mineral pigments
+float inkHash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7)))*43758.5453); }
+float inkNoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.0 - 2.0*f);
+  return mix(mix(inkHash(i), inkHash(i + vec2(1.0, 0.0)), f.x), mix(inkHash(i + vec2(0.0, 1.0)), inkHash(i + vec2(1.0, 1.0)), f.x), f.y); }
+float fbm(vec2 p){ float s = 0.0, a = 0.5; for (int i = 0; i < 4; i++) { s += a*inkNoise(p); p = p*2.03 + 17.1; a *= 0.5; } return s; }
+vec3 mineral(vec3 h){                                // a hue (normalised to its brightest channel) to the four pigments
+  const vec3 PG[4] = vec3[4](vec3(0.710, 0.322, 0.231), vec3(0.306, 0.541, 0.431), vec3(0.247, 0.373, 0.541), vec3(0.722, 0.541, 0.243));
+  vec3 s = vec3(0.0); float ws = 0.0;
+  for (int i = 0; i < 4; i++) { vec3 p = PG[i]/mx3(PG[i]); vec3 d = h - p; float w = exp(-dot(d, d)*14.0); s += PG[i]*w; ws += w; }
+  return mix(s/max(ws, 1e-4), vec3(0.86, 0.83, 0.78), 0.10);
+}
+// M39 (i2d): pigment that bleeds out of the line-work: the line's density gathered over two rings of 12 taps whose
+// reach wanders with the paper (2.5 to 7 css px), so where the lines crowd the pigment pools and a lone stipple stays
+// a dot; nothing reaches further than 7 px past a line
+float lineCov(vec2 uv){ return clamp(mx3(texture(uBird, uv).rgb)*6.0, 0.0, 1.0); }
+float bleed(vec2 uv, vec2 q, float cpx){
+  float rr = mix(2.5, 7.0, fbm(q*0.09 + 4.0)), m = lineCov(uv)*2.0;
+  for (int i = 0; i < 12; i++) { float a = float(i)*0.5236 + 0.26*fbm(q*0.3); vec2 o = vec2(cos(a), sin(a))*cpx*rr*uPx1;
+    m += lineCov(uv + o*0.45) + lineCov(uv + o)*0.6; }
+  return m/21.2;
+}
 vec3 inkHue(vec3 c){ vec3 h = c/max(mx3(c), 1e-4); float y = dot(h, vec3(0.2126, 0.7152, 0.0722)); return h*min(1.0, 0.45/max(y, 1e-3)); }
 void main(){
   vec2 uv = gl_FragCoord.xy/uRes, p = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y);
@@ -349,6 +370,10 @@ void main(){
   vec3 d = uDayBg;
   if (uDay > 0.001) {
     float k = uDim*keep;
+    // M39 (i2b): css px, the fibre, and the mist that takes the lower sphere into empty paper
+    float cpx = max(uRing.x/max(uPx1.x, 1e-6)/2.5, 1.0); vec2 q = p/cpx; vec2 rl = p - uRim.xy; float Rr = max(uRim.z, 1.0);
+    float fib = fbm(q*vec2(0.02, 0.16) + 3.1), blot = fbm(q*0.018 + 11.0);
+    float mist = mix(1.0, smoothstep(1.05*Rr, -0.05*Rr, rl.y - 0.28*Rr*(blot - 0.5)), 0.85*(1.0 - uMorphK));
     vec3 bdd = max(bd, max(texture(uBird, uv + vec2(uPx1.x, 0.0)).rgb, texture(uBird, uv + vec2(0.0, uPx1.y)).rgb));   // 2 device px strokes
     float kod = clamp(mx3(bdd)*3.0, 0.0, 0.9);
     vec4 A = texture(uAcc, uv);
@@ -366,9 +391,14 @@ void main(){
     float silB = smoothstep(uWashT*1.6, uWashT*2.2, wa), emb = smoothstep(0.5, 0.8, sat);
     float hk = max(emb*silB, uShimK*smoothstep(0.08, 0.3, sat));   // embers on the bird (and the close's shimmer) keep their hue
     sh *= 1.0 - emb*(1.0 - silB)*(1.0 - uShimK);
-    d = mix(d, mix(uDayInk, inkHue(A.rgb), hk), sh*mix(uShellA, 0.6, hk)*mix(1.0, 0.85, uMorphK*uShimK)*k);
-    float dr = abs(length(p - uRim.xy) - uRim.z);                // the rim: one device pixel
-    d = mix(d, uDayInk, uRimA*(1.0 - smoothstep(0.0, 1.0, dr))*k);
+    d = mix(d, mix(uDayInk, inkHue(A.rgb), hk), sh*mix(uShellA, 0.6, hk)*mix(1.0, 0.85, uMorphK*uShimK)*k*(0.65 + 0.7*fib)*mist);   // M39: the ink pools with the fibre, lifts into mist
+    // M39 (i2b): the silhouette is one dry-brush stroke: it swells and thins round the sphere and breaks where the
+    // brush ran dry, fading into the mist toward the foot (v3-r4 drew one even device pixel)
+    float sdr = length(p - uRim.xy) - uRim.z, angr = atan(rl.y, rl.x);
+    float swr = 0.5 + 0.5*sin(angr + 2.2), wgt = mix(0.5, 3.0, swr*swr)*cpx;
+    float dry = smoothstep(0.28, 0.62, fbm(vec2(angr*Rr/cpx*0.09, sdr/cpx*0.55) + 5.0));
+    float brush = clamp(wgt + 0.5 - abs(sdr + 0.4*wgt), 0.0, 1.0)*mix(1.0, dry, 0.75)*(0.25 + 0.75*mist);
+    d = mix(d, uDayInk, uRimA*brush*k*(1.0 - 0.75*uMorphK));
     d = mix(d, uSignal, min(0.5, 1.0 - exp(-pil*dayPil(p)*uPilK))*k);   // the pillar: 50% at most; with the page's axis line at 50% over it, 75% (v3-r3)
     // the bird (round 8, M29): a fine-line ink drawing. Its colour is laid in first as a restrained, transparent wash
     // (the blurred bird, multiplied into the paper like watercolour: the flame phoenix warm, the fenghuang a soft
@@ -380,7 +410,15 @@ void main(){
     // the old threshold, so it no longer spreads past the plumage as a salmon halo) and laid at 18%, a restrained wash
     float sil = silB*k;
     vec3 wh = bw/max(wa, 1e-4); wh = mix(vec3(dot(wh, vec3(0.2126, 0.7152, 0.0722))), wh, 1.25);   // the hue, a touch purer
-    d = mix(d, clamp(wh, 0.0, 1.0), 0.18*sil);
+    // M39 (i2d): I1's mineral pigments (the flame phoenix lands on the warm pair, cinnabar and ochre; the fenghuang's
+    // spectrum on all four) bleeding out of the line-work, by multiply, 0.55 at most: a ragged front that wanders with
+    // the paper, a darker tide-line where it dries, a granular body; the blurred bird gives the hue only, never the
+    // extent, so there is no halo round the bird
+    float blc = mx3(bw) > 0.003 ? bleed(uv, q, cpx)*k : 0.0, edgeN = fbm(q*0.06 + 21.0), gran = fbm(q*0.35 + 13.0);
+    float wash = smoothstep(0.08 + 0.12*edgeN, 0.3 + 0.12*edgeN, blc), tide = smoothstep(0.05, 0.3, wash)*(1.0 - smoothstep(0.45, 0.9, wash));
+    vec3 pig = mix(vec3(0.62, 0.61, 0.60), mineral(wh), 0.85);
+    d *= mix(vec3(1.0), pig, clamp(wash*0.30*(0.7 + 0.6*gran) + tide*0.08, 0.0, 0.55));
+    d = mix(d, uDayInk, clamp(wash*0.05 + tide*0.07, 0.0, 1.0));
     float db = mx3(bdd)*k;
     d = mix(d, uDayInk, (1.0 - exp(-db*4.0))*0.70);
     d += n*(1.2/255.0);
@@ -746,7 +784,7 @@ export function createHero(cv, opts = {}) {
     const dSim = Math.abs(simT - sim0) > 1 ? 0 : simT - sim0;   // no blur across a cut
     // the wingbeat's phase, integrated so it never jumps: on the loop's own time while it runs free, on real time (at
     // the lap's own rate) while the scroll holds the loop
-    const tau0 = ((simT/PERIOD) % 1 + 1) % 1, dPh = 2*Math.PI*rig.flapHz(tau0)*(timeLock === null ? sdt : dt*Math.max(0.35, speed));
+    const tau0 = ((simT/PERIOD) % 1 + 1) % 1, dPh = 2*Math.PI*rig.flapHz(tau0, rig.lifeOf(simT))*(timeLock === null ? sdt : dt*Math.max(0.35, speed));
     phase += dPh;
     lifeK += (1 - lifeK)*(1 - Math.exp(-dt*0.5));
     inertia(dt);
@@ -847,6 +885,7 @@ export function createHero(cv, opts = {}) {
     gl.uniform3fv(u.uC, b.C); gl.uniform3fv(u.uF, b.F); gl.uniform3fv(u.uU, b.U); gl.uniform3fv(u.uS, b.S);
     gl.uniform3fv(u.uInk, LK.ink); gl.uniform3fv(u.uInk2, LK.ink2); gl.uniform3fv(u.uHot, FLAME.hot); gl.uniform3fv(u['uFl[0]'], FLAME.stops.flat());
     gl.uniform1f(u.uFireA, FLAME.alpha); gl.uniform1f(u.uBirdK, birdK*birdIn);
+    rig.setNight && rig.setNight(1 - LK.dayNow);   // v3-r5: fh8's night-only touches (uNt)
     rig.uniforms(gl, u, b, eye);
   }
   function composite(){
@@ -1063,6 +1102,8 @@ export function createHero(cv, opts = {}) {
     get loopTime(){ return ((simT % PERIOD) + PERIOD) % PERIOD; },
     get simTime(){ return simT; },
     get lockT(){ return timeLock; },   // the loop's own clock (life A on even loops, B on odd: bird.js)
+    // v3-r5 (camera.js, from wordmark-motion's engine): the bird's own frame in the sphere's space, for close-ups
+    get birdFrame(){ return { C: bird.C.slice(), S: bird.S.slice(), U: bird.U.slice(), F: bird.F.slice(), scale: bird.scale, absorb: bird.absorb, life: bird.life || 0 }; },
     get birdState(){ return { T: +simT.toFixed(2), tau: +bird.tau.toFixed(3), life: +(bird.life || 0).toFixed(2), absorb: +bird.absorb.toFixed(2), form: +bird.form.toFixed(2), shown: +(birdK*birdIn*dim).toFixed(2) }; },
     // setMorph: reshape the field's particle targets. kind 'bands' (the mark's five split bands) or 'none'; amount
     // 0..1 how strongly particles are pulled to the new shape (0 is the free flow; it eases back as it drops)

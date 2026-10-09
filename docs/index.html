@@ -8,9 +8,10 @@
 <meta name="theme-color" content="#15171A">
 <meta name="color-scheme" content="dark light">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@400..700&family=Funnel+Sans:wght@400..600&family=Martian+Mono:wght@400&family=Saira:wdth,wght@125,500&display=swap" rel="stylesheet">
+<!-- T2 Catalogue (U35): HHL Equator, Newsreader and Source Sans 3, vendored (fonts/fonts.css) -->
+<link rel="preload" href="fonts/HHLEquator-300.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/Newsreader-normal-300-500.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="fonts/fonts.css">
 <link rel="stylesheet" href="page.css">
 <script>
 // Theme and scheme before first paint, so no frame shows the wrong one. ?theme=light|dark overrides; then the visitor's
@@ -22,7 +23,7 @@ try{a=localStorage.getItem('hhl-theme');b=localStorage.getItem('hhl-scheme')}cat
 if(t!=='light'&&t!=='dark')t=a==='light'||a==='dark'?a:(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');
 d.setAttribute('data-close',q.get('close')==='centred'?'centred':'lockup');var S=/^(mono|plasma|coral)$/,R=q.get('review')==='1';if(!R)s=null;if(R)d.setAttribute('data-review','1');if(!S.test(s||'')){if(R&&S.test(b||''))s=b;else{s=t==='light'?'mono':'plasma';d.setAttribute('data-scheme-auto','1')}}
 d.setAttribute('data-theme',t);d.setAttribute('data-scheme',s);d.classList.add('js');
-var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='light'?'#EBEDEC':'#15171A')})();
+var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='light'?'#E7E5E1':'#15171A')})();
 </script>
 <!-- GSAP 3.15.0 and ScrollTrigger, our own pinned copies from the npm package (README: hashes) -->
 <script src="vendor/gsap.min.js" defer></script>
@@ -61,7 +62,7 @@ var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('co
 
 <header class="top">
   <a class="brand" href="#top" aria-label="HEY HEY LABS, back to the top">
-    <span class="lk" aria-hidden="true"><span class="mark"></span><span class="wm">HEY HEY LABS</span></span>
+    <span class="lk" aria-hidden="true"><span class="mark"></span><svg class="wm" viewBox="-4 60 1299.71 136" focusable="false"><use href="wordmark/word.svg#w"/></svg></span>
   </a>
   <div class="top-end">
     <button class="mode" id="mode" type="button" aria-pressed="true" aria-label="Dark theme" title="Switch to the light theme">
@@ -97,7 +98,7 @@ var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('co
       <div class="words">
         <h2 id="s2-h">Five layers. One&nbsp;system.</h2>
         <div class="swap layer-swap">
-          <p class="body beat-a">Built to fit, by one team that answers for every&nbsp;part.</p>
+          <p class="body coda beat-a">Built to fit, by one team that answers for every&nbsp;part.</p>
           <ol class="layers beat-b" role="list">
             <li><p><strong>Design and UX.</strong> Interfaces people understand the first time.</p></li>
             <li><p><strong>Apps and products.</strong> Web, iPhone and Android on one back office.</p></li>
@@ -135,6 +136,10 @@ var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('co
           <div class="platform beat-c">
             <h3>Built on Asimov&nbsp;Cloud.</h3>
             <p class="body">Our own platform, defined as code and run on Google Cloud in&nbsp;Australia.</p>
+            <!-- B63 (Tim, Fri 9 Oct 2026): Google's own Google Cloud logo where the page names Google Cloud, never
+                 altered, blended in by placement, scale and clear space (at least the cloud icon's height). Files and
+                 their provenance: assets/ (PROVENANCE.md); by night the reversed stopgap until Google's own -->
+            <span class="gc-logo"><img class="gc-day" src="assets/google-cloud-logo.svg" alt="Google Cloud" width="123" height="20"><img class="gc-night" src="assets/google-cloud-logo-reversed.svg" alt="Google Cloud" width="123" height="20"></span>
             <p class="certs">Google Cloud&rsquo;s infrastructure is independently audited for SOC&nbsp;2, ISO/IEC&nbsp;27001, IRAP and PCI&nbsp;DSS.</p>
             <a class="text-link" href="https://cloud.google.com/security/compliance" rel="noopener">Google Cloud&rsquo;s certifications</a>
           </div>
@@ -172,7 +177,8 @@ var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('co
       <div class="art" aria-hidden="true"></div>
       <div class="words">
         <h2 id="s5-h">The same standard at any&nbsp;scale.</h2>
-        <p class="body">From a two-person practice to a national organisation: fixed scope, firm dates, code you&nbsp;own.</p>
+        <p class="body">From a two-person practice to a national&nbsp;organisation.</p>
+        <p class="body coda">Fixed scope, firm dates, code you&nbsp;own.</p>
         <p class="vh">Beside these words, the view pulls back until the sphere is one bright point among many others, then pushes in until it is larger than the screen.</p>
       </div>
     </div>
@@ -203,18 +209,26 @@ var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('co
     <div class="stage close">
       <div class="close-in">
         <div class="final" role="img" aria-label="HEY HEY LABS">
-          <span class="lk"><span class="mark"></span><span class="wm">HEY HEY LABS</span></span>
+          <span class="lk"><span class="mark"></span><i class="mark-spark" aria-hidden="true"></i><span class="wm-box"><svg class="wm" viewBox="-9 57.5 1354.71 141" focusable="false" aria-hidden="true"><use href="wordmark/word-close.svg#w"/></svg><svg class="wm-glint" viewBox="-9 57.5 1354.71 141" focusable="false" aria-hidden="true"><defs><linearGradient id="glFG" gradientUnits="userSpaceOnUse" x1="-9" x2="1345.71" y1="0" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/></linearGradient><linearGradient id="glBG" gradientUnits="userSpaceOnUse" x1="-9" x2="1345.71" y1="0" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/></linearGradient><linearGradient id="glS" gradientUnits="userSpaceOnUse" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#fff"/></linearGradient><mask id="glFull" maskUnits="userSpaceOnUse" x="-9" y="57.5" width="1354.71" height="141"><rect x="-9" y="57.5" width="1354.71" height="141" fill="url(#glFG)"/></mask><mask id="glBand" maskUnits="userSpaceOnUse" x="-9" y="57.5" width="1354.71" height="141"><rect x="-9" y="57.5" width="1354.71" height="141" fill="url(#glBG)"/></mask><mask id="glWord" maskUnits="userSpaceOnUse" x="-9" y="57.5" width="1354.71" height="141"><use href="wordmark/word-close.svg#w" style="color:#fff"/></mask><filter id="glHalo" x="-5%" y="-60%" width="110%" height="220%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g class="gl-full" mask="url(#glFull)"><use href="wordmark/word-close.svg#w"/></g><g class="gl-light" filter="url(#glHalo)"><g mask="url(#glWord)"><rect x="-9" y="57.5" width="1354.71" height="141" fill="url(#glS)" mask="url(#glBand)"/></g></g></svg></span></span>
         </div>
-        <h2 id="s7-h" class="line">Every layer, renewed.</h2>
+        <h2 id="s7-h" class="line coda">Every layer, renewed.</h2>
+        <p class="tagline">Design, software, cloud, growth and intelligence, engineered as one&nbsp;system.</p>
         <div class="actions">
           <a class="btn primary" href="mailto:hello@heyheylabs.com.au?subject=Talk%20to%20an%20engineer">Talk to an engineer</a>
           <a class="text-link" href="mailto:hello@heyheylabs.com.au?subject=Revive%20a%20project">Revive a project</a>
         </div>
-        <p class="vh">Above these words, the rainbow phoenix makes a last pass into the sphere's top pole and every particle of light streams into the HEY HEY LABS mark: five rounded bands split down the middle by a thin line, glowing, then white.</p>
+        <p class="vh">Above these words, the rainbow phoenix makes a last pass into the sphere's top pole and every particle of light streams into the HEY HEY LABS mark: five rounded bands split down the middle by a thin line, glowing, then white, and one light leaves its spine and crosses the name.</p>
       </div>
       <footer class="foot">
         <p class="legal">Hey Hey Labs Pty&nbsp;Ltd &middot; Melbourne</p>
-        <p class="legal"><a href="mailto:hello@heyheylabs.com.au">hello@heyheylabs.com.au</a></p>
+        <div class="foot-row"><p class="legal"><a href="mailto:hello@heyheylabs.com.au">hello@heyheylabs.com.au</a></p>
+        <button class="mode foot-mode" type="button" aria-pressed="true" aria-label="Dark theme" title="Switch to the light theme">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <defs><mask id="modeBite2"><rect x="-4" y="-4" width="32" height="32" fill="#fff"/><circle class="bite" cx="17.5" cy="7" r="6.2" fill="#000"/></mask></defs>
+            <circle class="core" cx="12" cy="12" r="7.5" mask="url(#modeBite2)"/>
+            <g class="rays"><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.55 1.55M17.15 17.15l1.55 1.55M5.3 18.7l1.55-1.55M17.15 6.85l1.55-1.55"/></g>
+          </svg>
+        </button></div>
         <div class="ours">
           <p class="legal">Our own products</p>
           <ul class="prods" role="list">
