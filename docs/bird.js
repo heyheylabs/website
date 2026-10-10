@@ -557,6 +557,7 @@ vec3 birdPoint(vec3 h, float flap, out vec4 info){
 
 export const BIRD_LOOK_GLSL = `
 uniform vec3 uBirth, uEye, uPoleB, uPoleD; uniform float uPullT;
+uniform float uEmb, uEt, uEmbA;   // ROUND7 ENGINE (H3): the embers' strength, real time (s) for their flicker, their sway (sphere units)
 const vec2 BODY_K = vec2(1.000, 1.100), NECK_K = vec2(3.600, 3.800);   // fh10: the body's and the neck's plumage light, life A and life B
 uniform float uRb, uHue0;          // fh5: the spectrum's weight (the fenghuang's life) and its starting hue, in turns
 uniform float uNew, uNt;           // fh5: the life being born this cycle (0 the phoenix, 1 the fenghuang); fh6: uNt, 1 at night
@@ -600,6 +601,21 @@ vec3 birdXf(vec3 l, vec4 info, vec3 h, float hk, out float wp, out float ab, out
     w = (dn*cos(th2) + tg*sin(th2))*mix(r, 1.63, smoothstep(0.0, 0.4, ab)) + normalize(h - 0.5 + 1e-4)*pow(h.z, 0.6)*mix(0.03, 0.075, ab*ab);   // a small round hot knot at the foot
     w *= mix(1.0, min(1.0, 1.6/max(length(w), 1e-4)), smoothstep(0.0, 0.3, ab));   // r6: the knot is light on the shell, never a bump past it (B44)
     vis = 1.0 - smoothstep(0.86, 1.0, ab);
+    // round 7 (H3, M40): the embers. As each point reaches the pole it joins a knot on the shell round the pole, and about
+    // two in five of them (by day one in six) stay lit there, flickering, until the rebirth's first frame. The knot turns slowly, each ember
+    // breathes on its own phase, and the whole knot sways a few px (uEmbA), all on real time, so it lives while the scroll
+    // holds the loop
+    if (uEmb > 0.001) {
+      float m = smoothstep(0.80, 0.96, ab)*uEmb, eh = fract(h.x*7.13 + h.y*3.71 + h.z*1.37);
+      vec3 j = normalize(h - 0.5 + 1e-4); j -= dn*dot(j, dn); float jl = length(j); j = jl > 1e-4 ? j/jl : vec3(1.0, 0.0, 0.0);
+      float an = uEt*0.55 + 6.2831853*h.x; j = j*cos(an) + cross(dn, j)*sin(an);
+      vec3 t1 = normalize(cross(dn, vec3(0.0, 0.0, 1.0)));
+      float rk = (0.035 + 0.065*sqrt(h.z))*(1.0 + 0.3*sin(uEt*2.1 + h.y*6.2831853));
+      vec3 we = dn*(1.6 + uEmbA*sin(uEt*2.83)) + t1*uEmbA*cos(uEt*2.83) + j*rk;
+      w = mix(w, we, m);
+      float fl = 0.3 + 0.7*pow(0.5 + 0.5*sin(uEt*(4.0 + 5.0*h.z) + h.y*40.0), 2.0);
+      vis = max(vis, step(eh, mix(0.16, 0.4, uNt))*fl*mix(0.4, 0.6, uNt)*m);   // by day fewer and fainter: speckles of ink, not a blot
+    }
   }
   // fh3: the two births differ. The phoenix gathers as a tongue of flame licking up off the crown; the fenghuang
   // gathers out of a slow ring of light turning round the crown, so its feathers spiral in to their places
@@ -630,7 +646,9 @@ vec3 birdCol(vec4 info, float wp, float ab, float hb, float hk, float hueOff, fl
   col = mix(col, mix(uFl[3], uHot, 0.35 + 0.4*info.y), hb*0.85);
   // fh6: at night the fenghuang's seed is its own spectrum from the first frame (never the field's grey ink)
   col = mix(mix(uInk, uInk2, hk), col, mix(smoothstep(0.0, 0.7, wp)*0.85, 0.75 + 0.25*smoothstep(0.0, 0.7, wp), uRb*uNt));
-  return mix(col, uHot, ab*0.6);
+  col = mix(col, uHot, ab*0.6);
+  vec3 ec = hk < 0.45 ? uFl[1] : (hk < 0.8 ? uFl[2] : uHot);   // ROUND7 ENGINE (H3)
+  return mix(col, ec, 0.7*uEmb*smoothstep(0.80, 0.96, ab));
 }
 float birdOcc(vec3 w, float ab){   // the sphere hides what is inside it or behind it
   vec3 rd = w - uEye; float rl = length(rd); rd /= max(rl, 1e-4);
@@ -918,10 +936,11 @@ function createRig({ phone, period, homeDir }) {
   // the moment the bird reaches the bottom pole (as r5: within 0.45 of the pillar's foot); the pull starts 0.6 s before
   const lapAt0 = tau => { const q = lapLocal(lapArc(tau)); return add(add(scl(LAP_RT, q[0]), [0, q[1], 0]), scl(LAP_FWD, q[2])); };
   const T_ARR = (() => { for (let t = 0.75; t < 0.95; t += 0.0005) if (len(sub(lapAt0(t), POLE_B)) < 0.45) return t*period; return 0.83*period; })(), PULL_LEAD = 0.6;
-  function pathLocal(b){
+  // ROUND6 ENGINE (U42): an optional sampler gives the point the bird passed s world units back (the close's flown path)
+  function pathLocal(b, back = null){
     const out = new Float32Array(24), loc = [];
     for (let k = 0; k < 8; k++) {
-      let d = k ? sub(lapPoint(b.sArc - k*PATH_STEP*b.scale), b.C) : [0, 0, 0];
+      let d = k ? sub(back ? back(k*PATH_STEP*b.scale) : lapPoint(b.sArc - k*PATH_STEP*b.scale), b.C) : [0, 0, 0];
       d = sub(d, scl(b.V, dot(d, b.V)*FLAT));
       loc.push([dot(d, b.S)/b.scale, dot(d, b.U)/b.scale, dot(d, b.F)/b.scale]);
     }
@@ -977,7 +996,8 @@ function createRig({ phone, period, homeDir }) {
     const hold = (isBLoop(T) ? 1 : 0)*smooth(5.6, 6.1, lt)*(1 - smooth(10.0, 10.5, lt)), headK = phone ? 1.2 : 1;   // fh10: both lives' heads, 1.2 inside the 1.3 times bird
     const b = { hold, wopen, flare, headK, C, F, U, S, V: toCam, sArc, absorb, pullT, unfurl, pulseY: -1.6 + 3.3*pp, pulseA, pp, tau, life, nextB,
       scale: 0.84*PHONE_K*(1 + 0.4*burn)*(1 + 0.2*life)*geneScale(T, life),   /* gen3: the scale gene */ burn, H: heading, form, flap: ph + 0.4*Math.sin(ph), amp: flapAmp(tau), tuck: flapTuck(tau), T,
-      poleD: [0, -1, 0], pole: POLE_IN };
+      poleD: [0, -1, 0], pole: POLE_IN,
+      emb: smooth(0.0, 0.25, pullT)*(1 - 0.6*smooth(period - 0.5, period - 0.02, tau*period)) };   // ROUND7 ENGINE (H3): the embers in the pole
     b.path = pathLocal(b); return b;
   }
 
@@ -1074,7 +1094,7 @@ function createRig({ phone, period, homeDir }) {
   const lerpFrame = (a, b, t) => ({ C: lerp3(a.C, b.C, t), S: norm(lerp3(a.S, b.S, t)), U: norm(lerp3(a.U, b.U, t)), F: norm(lerp3(a.F, b.F, t)), scale: a.scale + (b.scale - a.scale)*t });
   function simulate(dt, b){
     const rest = CH.map(ch => { const r = []; for (let j = 0; j < ch.n; j++) r.push(restLocal(ch, j, b)); return r; });
-    const jump = prevFrame && (len(sub(b.C, prevFrame.C)) > 0.35 + 3*dt || Math.abs(b.scale/prevFrame.scale - 1) > 0.25);
+    const jump = prevFrame && (len(sub(b.C, prevFrame.C)) > (0.35 + 3*dt)*Math.max(1, b.scale/0.84) || Math.abs(b.scale/prevFrame.scale - 1) > 0.25);   // round 6: a big bird (the close's flight) moves further a frame
     const snap = !chainLive || b.form < 0.03 || b.absorb > 0.98 || !prevFrame || jump || dt <= 0 && !chainLive;
     if (snap) {
       CH.forEach((ch, c) => { ch.x = rest[c].map(l => toWorld(b, l)); ch.xp = ch.x.map(v => v.slice()); ch.tw = null; });
@@ -1167,6 +1187,7 @@ function createRig({ phone, period, homeDir }) {
     // the crown's light runs up the pillar in the next life's colour
     set3('uPulseC', lerp3(f[3], b.nextB ? WHITE_GOLD : f[0], b.pp));
     set1('uBL', 0.9*b.form*(1 - b.absorb)); set3('uBLC', birdLightCol(b));
+    set1('uEmb', b.emb || 0);   // round 7 (H3)
   }
   // fh11 (M40, M27): the rebirth carried across as one light. As the dying bird is drawn into the bottom pole (from 0.6 s
   // before it arrives) a bead of its light gathers there and starts up the pillar at once, slowly (never still), in its
@@ -1183,6 +1204,6 @@ function createRig({ phone, period, homeDir }) {
     return { s, y, a: inA*outA, tail: sp/2, size: 1 - 0.4*smooth(0.0, 0.5, s), col };
   }
   let night = 1;
-  return { beadAt, strokeCount, get genes(){ return { on: GENES_ON, version: GENOME_V, viewer: VIEWER, A: GA, B: GB }; }, setNight(k){ night = k; }, at, flapHz, simulate, resetChains, outline, uniforms, lifeOf, lapPoint, lapArc, setLift(k){ lift = k; },
+  return { pathLocal, PATH_STEP, beadAt, strokeCount, get genes(){ return { on: GENES_ON, version: GENOME_V, viewer: VIEWER, A: GA, B: GB }; }, setNight(k){ night = k; }, at, flapHz, simulate, resetChains, outline, uniforms, lifeOf, lapPoint, lapArc, setLift(k){ lift = k; },
     TOP_IN, POLE_IN, POLE_T, POLE_B, T_ARR, period };
 }

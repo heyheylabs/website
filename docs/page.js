@@ -43,6 +43,12 @@ const smooth = (a, b, x) => { const t = clamp((x - a)/(b - a), 0, 1); return t*t
 const bump = (x, a, b, c, d) => smooth(a, b, x)*(1 - smooth(c, d, x));
 const HOME_YAW = 0.35, HOME_PITCH = 0.12, R = 1.6, PERIOD = 16;
 const BAND_Y = [1.376, 0.8, 0, -0.8, -1.376], BAND_W = [1.11, 1.536, 1.6, 1.536, 1.11], GAP = 0.62;
+// round 6 (U40, Yuan, approved by Tim Fri 9 Oct): the five layers as a tight stack, BAND_G apart, that opens BAND_O round
+// the active band (the bands either side move apart), so its line fits under its name, short laptop screens included.
+// A: how active each band is (0..1); a band above the active one moves up, one below it moves down
+const BAND_G = 0.16, BAND_O = 0.38, BAND_REACH = 1.6 + 2*BAND_G + BAND_O;   // the stack's half height at its widest (sphere units)
+const bandOffs = A => [0, 1, 2, 3, 4].map(k => { let o = (2 - k)*BAND_G; for (let j = 0; j < 5; j++) o += BAND_O*A[j]*(j > k ? 1 : j < k ? -1 : 0); return o; });
+const bandY = (pose, k) => BAND_Y[k] + (pose.bandOff ? pose.bandOff[k] : (2 - k)*GAP)*pose.spread;
 
 if (reduced) document.documentElement.classList.add('reduced');
 const $ = (s, el = document) => el.querySelector(s), $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -163,7 +169,23 @@ function measure(){
   { const h = segs.find(x => x.kind === 'hold' && x.a === 7); h7 = h ? Math.max(0.2, (h.to - h.from)/vh) : 0.9; CLOSE_IN = (0.42*0.9 + CLOSE_HOLD)/h7; CLOSE_OUT = CLOSE_IN - 0.04; }
   inkCache.clear();
   // scene 2's callouts carry each layer's line under its name only where the exploded bands are tall enough for it
-  root.setAttribute('data-callouts', wide && vh < 860 ? 'names' : 'lines');
+  root.setAttribute('data-callouts', 'lines');   // round 6 (U40): the active layer's line sits under its name on every desktop, short laptops included
+  centreClose();
+}
+// round 7 (review top fix 1): the close's lockup group (the mark, the wordmark, the line, the tagline and the actions)
+// sits with its centre at 46% of the screen's height, the optical centre, never into the footer or under the header.
+// A transform on .close-in (page.css --close-dy), so nothing else in the stage moves
+const CLOSE_AT = 0.46;
+function centreClose(){
+  const ci = $('.close-in'), st = S(7) && S(7).stage; if (!ci || !st || reduced) return;
+  ci.style.setProperty('--close-dy', '0px');
+  const s0 = rel(st).top, parts = ['.final', '.close .line', '.close .tagline', '.close .actions'].map(q => $(q)).filter(Boolean).map(rel);
+  if (!parts.length) return;
+  const top = Math.min(...parts.map(r => r.top)) - s0, bot = Math.max(...parts.map(r => r.bottom)) - s0;
+  let dy = vh*CLOSE_AT - (top + bot)/2;
+  const ft = $('.foot'); if (ft) dy = Math.min(dy, rel(ft).top - s0 - 24 - bot);
+  dy = Math.max(dy, safeT + rel(header).height + 16 - top);
+  ci.style.setProperty('--close-dy', dy.toFixed(1) + 'px');
 }
 function where(y){
   for (const g of segs) if (y <= g.to) return { g, t: clamp((y - g.from)/Math.max(1, g.to - g.from), 0, 1) };
@@ -227,7 +249,7 @@ function fitHero(){
 }
 // ---------- the poses ----------
 const BASE = { cam: { yaw: HOME_YAW, pitch: HOME_PITCH, roll: 0, dist: 1 }, dim: 1, speed: 1, bird: 1, birdScale: 1, lift: 0, spread: 0,
-  lit: [0, 0, 0, 0, 0], pillar: 0, ember: 0, others: 0, morph: 0, white: 0, exit: 0, loopT: null,
+  lit: [0, 0, 0, 0, 0], bandOff: bandOffs([0, 0, 0, 0, 0]), bandFloor: 0.30, pillar: 0, ember: 0, others: 0, morph: 0, white: 0, exit: 0, loopT: null,
   steady: 0, behind: 0, feather: 40, axisOff: 0,
   route: { grow: 1, vis: 1, ticks: 0, sparks: 0, dark: 0, pulse: -1, mark: 0 } };
 const P = o => ({ ...BASE, ...o, cam: { ...BASE.cam, ...(o.cam || {}) }, route: { ...BASE.route, ...(o.route || {}) } });
@@ -249,17 +271,28 @@ function takeAnchor(simT){
 const CALLOUT_W = 300;
 function bandsFrame(t){
   if (!wide) {
-    const A = artBox(2), rBase = Math.min(A.h/2.3, A.w*0.36), rBands = Math.min(A.h/2/1.95, A.w*0.25);
+    const A = artBox(2), rBase = Math.min(A.h/2.3, A.w*0.36), rBands = Math.min(A.h/2/(BAND_REACH/1.6*1.1), A.w*0.25);   // round 6: the tight stack
     const r = lerp(rBase, rBands, t);
     return [Math.max(A.x + A.w*0.28, r + 16), A.y + A.h*0.5, r];   // v3-r2: never cut by the left edge as it opens
   }
   const ink = inkOf(2), m = parseFloat(getComputedStyle(header).paddingLeft) || 64;
   const xL = (ink ? ink.x1 : vw*0.42) + 64, xR = vw - m - CALLOUT_W - 40;
-  const rBands = Math.max(80, Math.min(vh*0.5/1.95, (xR - xL)/2.04)), cx = (xL + xR)/2;
+  const rBands = Math.max(80, Math.min(vh*0.5/(BAND_REACH/1.6*1.1), (xR - xL)/2.04)), cx = (xL + xR)/2;   // round 6: sized to the tight stack at its widest
   // v3-r4: the whole sphere at the scene's start stays 40 px clear of the headline's ink (it touched "One system.":
   // review finding 7, and the clear-sweep's desktop hits)
   const rBase = Math.max(rBands, Math.min(baseR(), rBands*1.35, (cx - (ink ? ink.x1 : vw*0.42) - 40)/SIL_K));
   return [cx, vh*0.5, lerp(rBase, rBands, t)];
+}
+// round 7 (review High 1; M33, M19, M38): the stack section has no room under the art. On a desktop, while it passes, the
+// sphere sits right of its column: centre at 78% of the width, the silhouette's radius 30% of the height (20% of the width
+// at most), on the screen's middle; the column ends 64 px short of that rim (page.css, the same formula). Scene 3's words
+// leave first (its timeline), then the sphere glides over, from 0.94 of scene 3's pinned span to 0.22 of a screen after
+// its stage starts to move, before the stack's heading comes up beside it
+const STACK_CX = 0.78, STACK_R = 0.30, STACK_RW = 0.20, STACK_GAP = 64;
+const stackFrame = () => [vw*STACK_CX, vh*0.5, Math.min(vh*STACK_R, vw*STACK_RW)/silK];   // silK: the silhouette over the frame, measured each frame
+function stackGo(p){
+  const h3 = segs.find(x => x.kind === 'hold' && x.a === 3); if (!h3 || !wide) return 0;
+  return smooth(0.94*pf3, pf3 + 0.22*vh/Math.max(1, h3.to - h3.from), p);
 }
 const POSES = {
   1(p){   // the promise: the sphere bleeding off the right edge, the phoenix flying its lap; the axis draws out from the
@@ -269,9 +302,12 @@ const POSES = {
   },
   2(p){   // five layers: the sphere opens into five bands, an exploded view; each lights as its callout is read
     const t = smooth(0.0, 0.22, p);
-    const lit = [0, 1, 2, 3, 4].map(i => { const c = 0.30 + 0.15*i;
-      return Math.max(bump(p, c - 0.075, c - 0.04, c + 0.07, i === 4 ? 9 : c + 0.1), p > c + 0.07 ? 0.38 : 0.12); });
+    // round 6 (U40): the active band and its name at full light; every other band, those already passed included,
+    // dimmed right down (the floor 0.10); before the first layer lights, all five rest evenly
+    const act = [0, 1, 2, 3, 4].map(i => { const c = 0.30 + 0.15*i; return bump(p, c - 0.075, c - 0.04, c + 0.07, i === 4 ? 9 : c + 0.1); });
+    const rest = 1 - smooth(0.225, 0.265, p), lit = act.map(a => Math.max(a, 0.32*rest));
     return P({ frame: bandsFrame(t), cam: { yaw: HOME_YAW + 0.25*t, pitch: HOME_PITCH + 0.34*t }, bird: lerp(0.9, 0.3, t), lift: t, spread: t, lit,
+      bandOff: bandOffs(act), bandFloor: 0.10,
       loopT: lerp(anchorT, LT.s2b*PERIOD, p),
       dim: 0.92, route: { ticks: t } });
   },
@@ -283,9 +319,11 @@ const POSES = {
     // the bands arrive here during the hand-over at their own size (fully on screen), then close into the sphere,
     // which grows until it runs off the edge
     const rb = Math.min(bandsFrame(1)[2], fr[2]), cx0 = wide ? Math.max(fr[0], rb*1.15) : fr[0];
-    return P({ frame: [lerp(cx0, fr[0], close), fr[1], Math.exp(lerp(Math.log(rb), Math.log(fr[2]), close))],
+    const f3 = [lerp(cx0, fr[0], close), fr[1], Math.exp(lerp(Math.log(rb), Math.log(fr[2]), close))], go = stackGo(p);   // round 7: then right of the stack
+    return P({ frame: go > 0 ? mixFrame(f3, stackFrame(), go) : f3,
       cam: { yaw: HOME_YAW + 0.25*(1 - close) - 0.12*smooth(0.3, 1, p), pitch: HOME_PITCH + 0.34*(1 - close) + 0.06*close },
-      bird: lerp(0.3, 0.85, smooth(0.1, 0.6, p)), lift: 1 - close, spread: 1 - close, lit: [0.38, 0.38, 0.38, 0.38, 0.38].map(v => v*(1 - close)),
+      bird: lerp(0.3, 0.85, smooth(0.1, 0.6, p)), lift: 1 - close, spread: 1 - close, lit: [0, 0, 0, 0, 1 - close],
+      bandOff: bandOffs([0, 0, 0, 0, 1]), bandFloor: lerp(0.10, 0.30, close),   // round 6: scene 2's last state, closing
       loopT: lerp(LT.s2b, LT.s3b, p)*PERIOD,
       pillar: smooth(0.12, 0.45, p), dim: 0.88,
       route: { ticks: 1 - close, sparks: smooth(0.3, 0.5, p) } });
@@ -354,7 +392,7 @@ const POSES = {
     // before the wordmark arrives, and the glow decays to the flat mark over 600 ms after it (glow.k, closeText)
     p = p*h7/0.9;
     const cond = smooth(0.08, 0.36, p), sk = smooth(0.02, 0.34, p);
-    let fr;
+    let fr, fr0r = 1;
     {
       // v3-r4 (review High 1, M33): on a desktop the close's sphere starts centred on the page's axis with its bottom pole
       // CLOSE_GAP (64) px above the cap height of "Every layer, renewed.", sized to the space above the line, then shrinks
@@ -363,14 +401,16 @@ const POSES = {
       // clear of the capitals there too (it touched them: review finding 6, the clear-sweep's one phone hit)
       const gap = wide ? CLOSE_GAP : 32, capT = closeCapTop(), room = capT - gap - (safeT + (wide ? 40 : 16));
       const r0 = Math.max(rMark, Math.min(vh*0.24, vw*0.3, room/(2*SIL_K)));
-      const r = Math.exp(lerp(Math.log(r0), Math.log(rMark), sk));
+      const r = Math.exp(lerp(Math.log(r0), Math.log(rMark), sk)); fr0r = r0;
       const x0 = wide ? vw/2 : A.cx, y0 = wide ? capT - gap - SIL_K*r0 : A.cy;
       const x = lerp(x0, A.cx, sk), y = Math.min(lerp(y0, A.cy, sk), capT - gap - SIL_K*r);
       fr = [x, y, r];
     }
     return P({ frame: fr,
       cam: { yaw: lerp(HOME_YAW, 0, smooth(0, 0.32, p)), pitch: lerp(HOME_PITCH, 0, smooth(0, 0.32, p)) },
-      bird: 1, exit: smooth(0.0, 0.24, p), loopT: lerp(LT.s6b, LT.s7b, smooth(0, 0.24, p))*PERIOD, morph: cond,
+      // round 6 (U42, M40): the fenghuang is not drawn into the pole any more; it keeps flying round the sphere as it
+      // becomes the mark (kept nearer its own size as the sphere shrinks), and flies out of the mark once it has formed
+      bird: 1, exit: 0, birdScale: Math.sqrt(fr0r/Math.max(1, fr[2])), loopT: lerp(LT.s6b, LT.s7b, smooth(0, 0.24, p))*PERIOD, morph: cond,
       shimmer: 0.9*bump(p, 0.12, 0.2, 0.26, 0.4),   // v3-r2 (from v2-rise): one spectral flash, then white
       white: smooth(0.3, 0.6, p), dim: lerp(1, 0.42, cond)*lerp(1, 0.34, 1 - glow.k), speed: lerp(1, 0.4, cond),
       // the axis lands on the mark's own line as the particles condense, then hands over to the crisp mark
@@ -420,6 +460,7 @@ function mix(a, b, t){
 
 // ---------- the words in each stage: paused timelines, progress = p ----------
 const TL = {};
+let pf3 = 1;   // round 6: scene 3's pinned share of its hold
 function buildTimelines(){
   for (const k in TL) { TL[k].progress(0); TL[k].kill(); delete TL[k]; }
   if (reduced || !gsap) return;
@@ -444,8 +485,16 @@ function buildTimelines(){
     const t = tl(3), el = S(3).el, a = $('.beat-a', el), b = $('.beat-b', el);
     gsap.set([a, b], { clearProps: 'opacity,transform' });
     gsap.set(b, { opacity: 0, y: 8 });
-    t.to(a, { opacity: 0, y: -6, duration: 0.035, ease: 'power2.in' }, 0.38);
-    t.to(b, { opacity: 1, y: 0, duration: 0.05, ease: 'expo.out' }, 0.425);
+    // round 6: scene 3's hold runs on through the stack section after it (the next scene starts after the stack), so
+    // its beats are placed in its own pinned span (pf of the hold), not in the stretch the stack scrolls over
+    const h3 = segs.find(x => x.kind === 'hold' && x.a === 3), pf = h3 ? clamp((S(3).h - vh)/Math.max(1, h3.to - h3.from), 0.2, 1) : 1; pf3 = pf;
+    t.to(a, { opacity: 0, y: -6, duration: 0.035*pf, ease: 'power2.in' }, 0.38*pf);
+    t.to(b, { opacity: 1, y: 0, duration: 0.05*pf, ease: 'expo.out' }, 0.425*pf);
+    // round 7 (review High 1): on a desktop the sphere then glides across to sit beside the stack section (stackGo), so the
+    // words leave first, in order: the figures, then the headline, both gone by 0.92 of the pinned span
+    if (wide) { const h = $('h2', S(3).stage); gsap.set(h, { clearProps: '--t' });
+      t.to(b, { opacity: 0, y: -6, duration: 0.03*pf, ease: 'power2.in' }, 0.86*pf);
+      t.to(h, { '--t': 0, duration: 0.03*pf, ease: 'power2.in' }, 0.89*pf); }
     t.set({}, {}, 1); }
   { // scene 4: the fall's words leave as the bird is drawn in; the rebirth's words arrive as the crown swells.
     // v3-r5 (review finding 1): in order. The fall's line goes before its headline; the rebirth's headline comes
@@ -461,6 +510,9 @@ function buildTimelines(){
   { // scene 6 on a phone: one step at a time under the headline, each gone before the next arrives
     const t = tl(6), lis = $$('.steps li', S(6).el);
     gsap.set(lis, { clearProps: 'opacity,transform' });
+    // round 6 (U41): on a desktop the steps arrive one at a time as the reader scrolls, each with a soft fade up, and
+    // stay (update: stepsIn); hidden until then, the ones already in shown at once after a rebuild
+    if (wide) { gsap.killTweensOf(lis); lis.forEach((li, i) => gsap.set(li, i < stepsIn ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 })); }
     if (!wide) {
       gsap.set(lis.slice(1), { opacity: 0, y: 8 });
       lis.forEach((li, i) => { if (i > 0) t.to(li, { opacity: 1, y: 0, duration: 0.04, ease: 'expo.out' }, 0.06 + 0.24*i);
@@ -484,26 +536,115 @@ function buildTimelines(){
 // sphere opens out again. The timelines below this never touch them, so nothing can show them early.
 // v3-r5: CLOSE_IN is where the glowing mark has held for CLOSE_HOLD of a screen (measure); glow.k is the glow, 1 until
 // the wordmark arrives, then down to 0 over 600 ms, ease-out; back to 1 at once on the way up
-const CLOSE_HOLD = 0.40, glow = { k: 1 };
+const CLOSE_HOLD = 0.06, glow = { k: 1 };   // round 6 (U42): the phoenix flies out as soon as the mark has formed (was 40vh of held mark)
+const rest = { k: 1 };   // round 7 (review High 2): the field's own strength, 1 until the mark has formed, then 0 over 400 ms
 let CLOSE_IN = 0.42, CLOSE_OUT = 0.38, h7 = 0.9;
 let closeOn = null, closeLog = [];
-// v3-r5 integration: the name arrives by the W3 Glint (B62) as the glow decays: one light leaves the mark's spine and
-// crosses the name over 900 ms (ease in and out), leaving it at full ink; the tagline (C15) and the actions follow at
-// 600 ms in one 300 ms fade. Back up past the threshold, all of it goes at once, as before.
+// round 6 (U42, Yuan, approved by Tim Fri 9 Oct): the phoenix is the Glint. Once the sphere has become the mark, the
+// phoenix flies out of it, loops and sweeps left to right over the mark and HEY HEY LABS; each letter appears as the bird
+// passes (the Glint's light rides just behind its head), then the tagline and the actions fade in (300 ms). It all runs
+// on a timer from the moment the mark forms, so a slow scroll, a flick past the close or a jump all see it once. Then the
+// bird keeps flying (M40): a slow orbit in the open space above the lockup, never over the words. Desktop: the lockup side
+// by side (U36), the sweep across the mark and the name; phones (stacked): the loop round the mark, the sweep across the
+// name. Scrolling back up past the threshold takes the name, the tagline and the actions away at once, glow back on, and
+// hands the bird back to its lap over 0.4 s.
 const closeEls = () => [$('.close .tagline'), $('.close .actions')].filter(Boolean);
-const glint = { k: 0 }, wmBase = () => $('.final .wm-box > .wm'), wmGlint = () => $('.final .wm-glint');
+const glint = { k: 0, fx: null }, wmBase = () => $('.final .wm-box > .wm'), wmGlint = () => $('.final .wm-glint');
+const fly = { on: false, t: 0, k: 0, path: null, done: false, words: false, last: null, bank: 0 };
+let wmFront = null;   // the Glint's front on screen (CSS px) while the bird crosses the name: the word's veil stops there
 function closeText(on, now = false){
   if (on === closeOn) return; closeOn = on;
   const els = closeEls(), base = wmBase(); if (!els.length || !gsap) return;
   closeLog.push({ on, t: Math.round(performance.now()) }); if (closeLog.length > 50) closeLog.shift();
-  gsap.killTweensOf([glint, glow, ...els, base].filter(Boolean));
+  gsap.killTweensOf([glint, glow, rest, ...els, base].filter(Boolean));
   if (now || !on) { gsap.set([...els, base].filter(Boolean), { opacity: on ? 1 : 0, overwrite: true }); gsap.set(glow, { k: on ? 0 : 1, overwrite: true });
-    glint.k = on ? 1 : 0; drawGlint(); return; }
+    rest.k = on ? 0 : 1;   // round 7: back up past the threshold the field returns at once
+    glint.k = on ? 1 : 0; glint.fx = null; wmFront = null; fly.on = false; fly.done = !!on; fly.words = !!on; drawGlint(); return; }
   gsap.set([...els, base].filter(Boolean), { opacity: 0 });
   gsap.to(glow, { k: 0, duration: 0.6, ease: 'power2.out', overwrite: true });
-  gsap.to(glint, { k: 1, duration: 0.9, ease: 'power1.inOut', onUpdate: drawGlint, onComplete(){ if (base) base.style.opacity = '1'; drawGlint(); } });
-  gsap.to(els, { opacity: 1, duration: 0.3, ease: 'power2.out', delay: 0.6 });
+  // round 7 (review High 2, B57): the mark has formed, so the field's particles leave over 400 ms and only the vector t01
+  // artwork remains at rest (the bird is not in the field: it flies on)
+  gsap.to(rest, { k: 0, duration: 0.4, ease: 'power1.out', overwrite: true });
+  fly.on = true; fly.t = 0; fly.path = null; fly.done = false; fly.words = false; glint.k = 0; glint.fx = null;
 }
+// the flight's path, from the lockup as it sits: pieces of Catmull-Rom spline through screen points, timed by arc length
+function crPt(P, i, u){ const a = P[Math.max(0, i - 1)], b = P[i], c = P[Math.min(P.length - 1, i + 1)], d = P[Math.min(P.length - 1, i + 2)];
+  const u2 = u*u, u3 = u2*u, f = (p0, p1, p2, p3) => 0.5*(2*p1 + (-p0 + p2)*u + (2*p0 - 5*p1 + 4*p2 - p3)*u2 + (-p0 + 3*p1 - 3*p2 + p3)*u3);
+  return [f(a[0], b[0], c[0], d[0]), f(a[1], b[1], c[1], d[1])]; }
+function sampled(P){ const pts = [P[0].slice()], acc = [0];
+  for (let i = 0; i < P.length - 1; i++) for (let j = 1; j <= 24; j++) { const q = crPt(P, i, j/24), l = pts[pts.length - 1];
+    acc.push(acc[acc.length - 1] + Math.hypot(q[0] - l[0], q[1] - l[1])); pts.push(q); }
+  return { pts, acc, L: acc[acc.length - 1] }; }
+function along(S, s){ s = clamp(s, 0, S.L); let lo = 0, hi = S.acc.length - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (S.acc[m] < s) lo = m; else hi = m; }
+  const d = S.acc[hi] - S.acc[lo] || 1, u = (s - S.acc[lo])/d, a = S.pts[lo], b = S.pts[hi];
+  return { x: lerp(a[0], b[0], u), y: lerp(a[1], b[1], u), dx: b[0] - a[0], dy: b[1] - a[1] }; }
+function flyPath(){
+  const m = rel($('.final .mark')), w = rel($('.final .wm-box')), lk = rel($('.final .lk')), stacked = getComputedStyle($('.final .lk')).flexDirection === 'column';
+  const top = Math.max(rel(header).bottom, safeT) + 12, H = m.height, mc = [m.left + m.width/2, m.top + m.height/2];
+  const W = wide ? clamp(w.width*0.42, 150, 230) : clamp(w.width*0.62, 110, 150);   // the bird's size across
+  const room = Math.max(40, lk.top - top), wy = w.top + w.height/2 - W*0.1;   // the sweep's line: the bird's body along the name, its wings clear of the line under it
+  // 1. out of the mark, up and over to the left, round a loop on the left that comes down into the sweep (a loop the
+  // loop: up, back over, down and through), so the sweep runs left to right across the mark and the name (desktop) or
+  // the name (phone, the mark above it). The loop's radius fits the room above the name and left of the lockup.
+  const Lp = Math.max(28, Math.min(H*0.95, (wy - top - W*0.55)/2, ((stacked ? w.left + 0.3*H : m.left) - W*0.45 - 12)/(stacked ? 1.3 : 1.9)));
+  const cx = stacked ? Math.max(w.left - 0.3*Lp, Lp + W*0.42) : m.left - 0.9*Lp, cy = wy - Lp;
+  const out = [[mc[0], mc[1]], [mc[0] - 0.15*Lp, m.top - 0.35*Lp], [cx + 0.15*Lp, cy - Lp], [cx - Lp, cy], [cx, cy + Lp]];
+  const sweep = [[cx, wy], [Math.max(cx + 8, stacked ? w.left : m.left), wy], [w.right + 0.5*Lp, wy]];
+  // 3. up off the name's right end into the orbit: an ellipse over the lockup.
+  // round 7 (review top fix 1): the orbit's path stays inside 12% to 40% of the screen's height, the bird's box inside the
+  // frame (12 px in) and 12 px clear of the lockup. The box reaches up to about REACH times the bird's size across above
+  // and below its place on the path (measured: tools/close-rest.mjs upK, downK), so where the room over the lockup is
+  // short the bird circles smaller: a calm, distant bird over the name, never cut by the top edge, never over the words
+  const REACH = 1.45, SWING = 4;
+  const cLim = s => [Math.max(vh*0.12, 12 + REACH*s), Math.min(vh*0.40, lk.top - 12 - REACH*s)];
+  let wo = W*0.62; while (wo > 24 && cLim(wo)[1] - cLim(wo)[0] < 2*SWING) wo -= 1;
+  const [cA, cB] = cLim(wo), ry = clamp((cB - cA)/2, 0, Math.max(SWING, Math.min(0.3*Lp, room*0.12))), oy = cB >= cA ? (cA + cB)/2 : cA;
+  const ox = lk.left + lk.width/2, rx = Math.max(40, Math.min(vw/2 - 12 - 1.1*wo, Math.max(lk.width/2 + 0.4*Lp, 120)));
+  const box = [12, 12, vw - 12, lk.top - 12];   // the safety net: the engine's fit holds the bird inside it while it circles
+  const rise = [sweep[2], [ox + rx + 0.2*Lp, wy - 0.5*Lp], [ox + rx, oy]];
+  let A = sampled(out);
+  { // the spline swings wider than its points: if the loop's top would put the bird's crest past the header, squash it
+    const minY = Math.min(...A.pts.map(q => q[1])), lim = top + W*0.62;
+    if (minY < lim) { const k = (wy - lim)/Math.max(1, wy - minY); A = sampled(out.map(([x, y]) => [x, wy - (wy - y)*k])); } }
+  const B = sampled(sweep), C = sampled(rise);
+  const v = B.L/(wide ? 1.0 : 0.95), vo = 2*Math.PI*Math.sqrt((rx*rx + ry*ry)/2)/14;   // the sweep in about a second; one orbit in 14 s
+  const dA = 2*A.L/v, dB = B.L/v, dC = 2*C.L/(v + vo);
+  return { A, B, C, dA, dB, dC, v, vo, W, wo, ox, oy, rx, ry, box, band: [+cA.toFixed(1), +cB.toFixed(1)], wx: [w.left, w.right], stacked };
+}
+function flyAt(F, t){   // where the bird is t s after the mark formed: { x, y, dx, dy, w, phase }
+  if (t < F.dA) { const s = 0.5*F.v*t*t/F.dA, q = along(F.A, s); return { ...q, w: F.W*lerp(0.3, 1, smooth(0, F.dA*0.8, t)), phase: 0 }; }
+  t -= F.dA;
+  if (t < F.dB) { const q = along(F.B, F.v*t); return { ...q, w: F.W, phase: 1 }; }
+  t -= F.dB;
+  if (t < F.dC) { const a = (F.vo - F.v)/F.dC, q = along(F.C, F.v*t + 0.5*a*t*t); return { ...q, w: lerp(F.W, F.wo*0.9, smooth(0, F.dC, t)), phase: 2 }; }
+  t -= F.dC;   // the orbit, anticlockwise on screen from its right end (up, over to the left, back under)
+  const om = F.vo/Math.sqrt((F.rx*F.rx + F.ry*F.ry)/2), a = om*t;
+  // round 7: a little smaller on the far (upper) half of the circle, so the flat orbit reads as circling
+  return { x: F.ox + F.rx*Math.cos(a), y: F.oy - F.ry*Math.sin(a), dx: -F.rx*Math.sin(a), dy: -F.ry*Math.cos(a), w: F.wo*(0.9 - 0.1*Math.sin(a)), phase: 3 };
+}
+function flyFrame(dt){
+  if (!hero || reduced) return;
+  fly.k = clamp(fly.k + (fly.on ? dt/0.35 : -dt/0.4), 0, 1);
+  if (!fly.on) { if (fly.k <= 0) { hero.setFly({ k: 0 }); fly.last = null; return; } }
+  else { if (!fly.path) fly.path = flyPath(); fly.t += dt; }
+  const F = fly.path; if (!F) { hero.setFly({ k: 0 }); return; }
+  const q = flyAt(F, fly.t), hl = Math.hypot(q.dx, q.dy) || 1; fly.phase = q.phase;
+  // a gentle bank from the turn: the heading's change, eased
+  let bank = 0; if (fly.last) { const h0 = Math.atan2(fly.last.dy, fly.last.dx), h1 = Math.atan2(q.dy, q.dx); let d = h1 - h0; d = Math.atan2(Math.sin(d), Math.cos(d)); bank = clamp(-d/Math.max(dt, 1e-3)*0.12, -0.5, 0.5); }
+  fly.bank = lerp(fly.bank, bank, 1 - Math.exp(-dt*6)); fly.last = q;
+  hero.setFly({ k: smooth(0, 1, fly.k), x: q.x, y: q.y, dx: q.dx/hl, dy: q.dy/hl, w: q.w, bank: fly.bank });
+  if (!fly.on) return;
+  // the name: the Glint's front rides just behind the bird's head while it crosses, so each letter appears as it passes
+  const head = q.x + (q.dx/hl)*q.w*0.32;
+  if (q.phase === 1) { glint.fx = Math.max(glint.fx ?? -1e9, head); wmFront = glint.fx; drawGlint(); }
+  if (q.phase >= 2 && !fly.done) {   // passed: the name at full ink, the Glint gone, then the tagline and the actions
+    fly.done = true; glint.fx = null; glint.k = 1; wmFront = null; drawGlint();
+    const base = wmBase(); if (base) base.style.opacity = '1';
+    gsap.to(closeEls(), { opacity: 1, duration: 0.3, ease: 'power2.out', delay: 0.1 }); fly.words = true;
+  }
+}
+window.__fly = () => ({ on: fly.on, t: +fly.t.toFixed(2), k: +fly.k.toFixed(2), done: fly.done, phase: fly.phase ?? null, at: fly.last && [+fly.last.x.toFixed(1), +fly.last.y.toFixed(1), +fly.last.w.toFixed(1)], front: wmFront && +wmFront.toFixed(1), d: fly.path && [fly.path.dA, fly.path.dB, fly.path.dC].map(v => +v.toFixed(2)),
+  orbit: fly.path && { ox: +fly.path.ox.toFixed(1), oy: +fly.path.oy.toFixed(1), rx: +fly.path.rx.toFixed(1), ry: +fly.path.ry.toFixed(1), wo: +fly.path.wo.toFixed(1), W: +fly.path.W.toFixed(1), band: fly.path.band } });
 // ---------- the Glint (W3, B62) ----------
 // The name is drawn three times in one place (index.html): the plain word (shown once the light has passed), the full
 // word behind the light's front (a mask that opens with it), and the light itself: a band carrying the phoenix's
@@ -519,13 +660,16 @@ function gStops(g, list){
 }
 function drawGlint(){
   const gs = wmGlint(), box = $('.final .wm-box'), lk = $('.final .lk'); if (!gs || !box || !lk) return;
-  const k = glint.k, night = theme() === 'dark', stacked = getComputedStyle(lk).flexDirection === 'column';
+  const night = theme() === 'dark', stacked = getComputedStyle(lk).flexDirection === 'column' && glint.fx === null;   // round 6: the bird's sweep runs left to right on a phone too
+  let k = glint.k;
   const b = stacked ? 110 : 200, SG = $('#glS'), light = $('.final .gl-light');
   const hues = night ? NIGHT_HUES : DAY_HUES, tip = night ? '#FFFFFF' : '#2E3A66', X1 = WM_VB[0] + WM_VB[2];
   let F, G, html = '';
   if (!stacked) {
     const r = box.getBoundingClientRect(), m = markBox(true), sx = WM_VB[0] + (m.lx - r.left)/Math.max(1, r.width)*WM_VB[2];
-    const f = lerp(sx, WM_INK[1] + b, k);
+    let f = lerp(sx, WM_INK[1] + b, k);
+    // round 6 (U42): while the bird crosses, the front is just behind its head (k follows it, for the light's fade)
+    if (glint.fx !== null) { const s0 = Math.min(sx, WM_INK[0] - b*0.2); f = WM_VB[0] + (glint.fx - r.left)/Math.max(1, r.width)*WM_VB[2]; k = clamp((f - s0)/(WM_INK[1] + b - s0), 0.001, 0.999); }
     F = [[WM_VB[0], 1], [f - b, 1], [f, 0], [X1, 0]];
     G = [[WM_VB[0], 0], [f - b, 0], [f - b*0.35, 1], [f + b*0.12, 0], [X1, 0]];
     SG.setAttribute('x1', (f - b).toFixed(1)); SG.setAttribute('x2', f.toFixed(1));
@@ -549,7 +693,7 @@ function drawGlint(){
   const sp = $('.final .mark-spark');
   if (sp) { const m = markBox(true), L = rel(lk);
     sp.style.left = (m.lx - L.left - 1).toFixed(1) + 'px'; sp.style.top = (m.lt - L.top).toFixed(1) + 'px'; sp.style.height = (m.lb - m.lt).toFixed(1) + 'px';
-    sp.style.opacity = (smooth(0, 0.06, k)*(1 - smooth(0.12, 0.34, k))).toFixed(3); }
+    sp.style.opacity = (fly.on && !fly.done ? smooth(0, 0.15, fly.t)*(1 - smooth(0.35, 0.8, fly.t)) : 0).toFixed(3); }   // round 6: the spine flares as the bird leaves it
 }
 window.__glint = () => ({ glow: +glow.k.toFixed(3), glint: +glint.k.toFixed(3), closeIn: +CLOSE_IN.toFixed(3) });
 window.__close = () => ({ on: closeOn, log: closeLog.slice() });
@@ -594,6 +738,7 @@ function hideRects(){
       if (ls.length && out.length + ls.length <= 22) { for (const l of ls) if (l.b > -16 && l.t < H + 16) out.push([l.l - pad, l.t - pad + 2, l.r + pad, l.b + pad - 2, a]); continue; }
     }
     const q = [b.left - pad, b.top - pad + 2, b.right + pad, b.bottom + pad - 2, a];
+    if (wmFront !== null && el.matches('.final .wm-box')) { q[2] = Math.min(q[2], wmFront - 24); if (q[2] <= q[0] + 2) continue; }   // round 6: only the letters already in
     if (el.matches('.top .brand')) q.brand = true;
     out.push(q);
     if (out.length >= 24) break;
@@ -623,9 +768,74 @@ function flightBox(frame){
     if (i === 0) x0 = Math.max(x0, b.right + C); else if (i === 1) x1 = Math.min(x1, b.left - C);
     else if (i === 2) y0 = Math.max(y0, b.bottom + C); else y1 = Math.min(y1, b.top - C);
   }
+  // round 7 (review High 1): on a desktop the stack section's blocks count too, so the bird stays 64 px off its words
+  if (wide) for (const b of stackBoxes()) {
+    const g = [ox - b.right, b.left - ox, oy - b.bottom, b.top - oy], m = Math.max(...g); if (m <= 0) continue;
+    const i = g.indexOf(m);
+    if (i === 0) x0 = Math.max(x0, b.right + C); else if (i === 1) x1 = Math.min(x1, b.left - C);
+    else if (i === 2) y0 = Math.max(y0, b.bottom + C); else y1 = Math.min(y1, b.top - C);
+  }
   const hb = rel(header).bottom; if (hb > 0) y0 = Math.max(y0, hb + 8);
   return [x0, y0, x1, y1];
 }
+
+// ---------- the stack section's words and the art (round 7, review High 1) ----------
+// The stack (stack/, pasted after scene 3) is not a pinned scene: it scrolls by in the page's flow. Its blocks of copy
+// (the heading, the lede, each logo row, each claim, the certifications) on or near the screen, this frame
+const STACK_Q = '.stack-head h2, .stack-lede, .stack-row, .stack-claims > div, .stack-certs-h, .stack-certs li, .stack-fine';
+let stackEls = [], stackMemo = { t: -1, list: [] };
+function stackBoxes(){
+  if (stackMemo.t === clock) return stackMemo.list;
+  const H = innerHeight, list = [];
+  for (const el of stackEls) { const b = el.getBoundingClientRect(); if (b.width < 1 || b.bottom < -240 || b.top > H + 240) continue; list.push(b); }
+  stackMemo = { t: clock, list }; return list;
+}
+// Desktop: if any of the stack's words would come within STACK_GAP of the sphere's rim (the hand-over into scene 4,
+// where the sphere grows into its next pose), the sphere moves right until they are clear: the least x for its centre
+// that keeps every block's box STACK_GAP off the disc
+function stackClear(fr){
+  if (!wide || !fr) return fr;
+  const R = fr[2]*silK, G = R + STACK_GAP; let cx = fr[0];   // the silhouette as drawn (silK, as stackFrame sizes it), so at rest it holds 78% exactly
+  for (const b of stackBoxes()) {
+    if (b.right > fr[0]) continue;   // the column is left of the sphere; nothing else to clear here
+    const dy = Math.max(0, b.top - fr[1], fr[1] - b.bottom); if (dy >= G) continue;
+    cx = Math.max(cx, b.right + Math.sqrt(G*G - dy*dy));
+  }
+  return cx === fr[0] ? fr : [cx, fr[1], fr[2]];
+}
+// The art layer's strength near the stack's words: the least distance from any of its blocks to the sphere's rim, its
+// axis and the bird's box, as drawn last frame. Under 960 px the column is the screen's width, so the art cannot sit
+// beside it: the sphere, the axis and the bird fade out over the last 80 px before any word comes within 48 px of them,
+// stay out while the stack passes, and come back once its last word has gone by ("Good work, unfinished." arriving). On a
+// desktop the layout keeps 64 px (stackClear, the flight box), so this only ever acts as a net: out by 48 px
+const ART_MIN = 48;
+let artK = 1;
+// The art is judged where it is drawn last frame AND where it will be drawn this frame (the pose's frame, its axis
+// upright through the centre, as the camera never rolls here; on a desktop the bird inside this frame's flight box), so a
+// thrown scroll, where the words move a long way between two frames, never shows a frame of art over them
+function stackArtK(fr, fb){
+  if (!hero || reduced) return 1;
+  const list = stackBoxes(); if (!list.length) return 1;
+  const o = hero.silhouette, bb = hero.birdBox, ax = axisNow, shown = hero.birdState.shown > 0.05;
+  const R = fr ? fr[2]*silK : 0, ext = fr ? clamp(fr[2]*0.08, 3, 36) : 0;   // the silhouette as drawn, as stackClear sizes it
+  const fbOk = wide && fb && fb[2] - fb[0] > 8 && fb[3] - fb[1] > 8;
+  const bird = fbOk ? { x0: fb[0], y0: fb[1], x1: fb[2], y1: fb[3] } : bb;
+  const rr = (q, z) => Math.hypot(Math.max(0, q.x0 - z.x1, z.x0 - q.x1), Math.max(0, q.y0 - z.y1, z.y0 - q.y1));
+  let d = 1e9;
+  for (const b of list) {
+    const q = { x0: b.left, y0: b.top, x1: b.right, y1: b.bottom };
+    d = Math.min(d, Math.max(0, distRectPt(q, o.x, o.y) - o.r));
+    if (ax) d = Math.min(d, distRectSeg(q, ax));
+    if (fr) { d = Math.min(d, Math.max(0, distRectPt(q, fr[0], fr[1]) - R), distRectSeg(q, [fr[0], fr[1] - R - ext, fr[0], fr[1] + R + ext])); }
+    if (shown) { if (bb) d = Math.min(d, rr(q, bb)); if (bird && bird !== bb) d = Math.min(d, rr(q, bird)); }
+  }
+  return wide ? smooth(ART_MIN, STACK_GAP, d) : smooth(ART_MIN, ART_MIN + 80, d);
+}
+function setArtK(k){
+  if (Math.abs(k - artK) < 0.002 && k !== 0 && k !== 1) return; artK = k;
+  const v = k >= 0.999 ? '' : k.toFixed(3); canvas.style.opacity = v; svg.style.opacity = v;
+}
+window.__artK = () => artK;
 
 // ---------- the axis (M33): the sphere's own line, pole to pole ----------
 const NS = 'http://www.w3.org/2000/svg', svg = $('#spine');
@@ -665,7 +875,7 @@ const f1 = v => v.toFixed(1);
 function spine(pose, seg, calm){
   if (!hero) return;
   const rt = pose.route, mk = rt.mark || 0;
-  const sp = 1.6 + GAP*2*pose.spread;
+  const sp = 1.6 + Math.max(0, pose.bandOff ? Math.max(pose.bandOff[0], -pose.bandOff[4]) : GAP*2)*pose.spread;   // round 6: the stack's own reach
   let T = hero.project([0, sp, 0]), B = hero.project([0, -sp, 0]);
   // v3-r4: across, the line stays on the sphere's own axis (the desktop close now slides the sphere from the page's axis
   // into the lockup's mark) and takes only the mark line's own offset from the mark's centre; along, it lands on the mark
@@ -696,7 +906,7 @@ function spine(pose, seg, calm){
   // its callout
   let ticks = '', leads = '', dots = '';
   if (rt.ticks > 0.01) {
-    for (let k = 0; k < 5; k++) { const y = BAND_Y[k] + (2 - k)*GAP*pose.spread, q = hero.project([0, y, 0]), tw = 3 + 7*pose.lit[k];
+    for (let k = 0; k < 5; k++) { const y = bandY(pose, k), q = hero.project([0, y, 0]), tw = 3 + 7*pose.lit[k];
       ticks += `M${f1(q[0] - tw)} ${f1(q[1])} H${f1(q[0] + tw)} `;
       const Ld = leadOf[k];
       if (Ld) { leads += Math.abs(Ld[3] - Ld[1]) < 1.5 ? `M${f1(Ld[0])} ${f1(Ld[1])} H${f1(Ld[2])} `
@@ -729,17 +939,17 @@ function placeNames(pose, on){
   const xs = Math.max(right + (wide ? 40 : 14), 0);
   const top = safeT + 12; let prevB = -1e9;
   names.forEach((s, k) => {
-    const y = BAND_Y[k] + (2 - k)*GAP*pose.spread, q = hero.project([0, y, 0]);
+    const y = bandY(pose, k), q = hero.project([0, y, 0]);
     const rim = hero.project(B.r.map(v => v*BAND_W[k]).map((v, i) => v + (i === 1 ? y : 0)))[0];
     const x = wide ? xs : Math.max(right, rim) + 14;
     const mw = Math.max(80, vw - x - (wide ? parseFloat(getComputedStyle(header).paddingLeft) || 64 : 12)); s.style.maxWidth = mw + 'px';
-    const hh = s.querySelector('b').offsetHeight || 20, full = s.offsetHeight || hh;
-    // each label keeps the room its own line needs (lit or not, so nothing shifts as the light moves down), and never
-    // starts above the end of the one before it
-    const yy = Math.max(top, q[1] - hh/2, prevB + 10); prevB = yy + full;
+    const hh = s.querySelector('b').offsetHeight || 20, full = s.offsetHeight || hh, em = clamp(pose.lit[k], 0, 1);
+    // round 6 (U40): only the active label keeps the room its line needs (the stack opens round it, so the line fits);
+    // the others keep their name's; none starts above the end of the one before it
+    const yy = Math.max(top, q[1] - hh/2, prevB + 10); prevB = yy + (em > 0.6 ? full : hh);
     s.style.transform = `translate(${f1(x - base.left)}px, ${f1(yy - base.top)}px)`;
     const a = on*smooth(0.4, 0.9, pose.spread);
-    s.style.opacity = a.toFixed(3);
+    s.style.opacity = (a*(0.22 + 0.78*em)).toFixed(3);   // round 6 (U40): every name but the active one dimmed right down
     s.style.visibility = a > 0.01 ? 'visible' : 'hidden';
     s.classList.toggle('lit', pose.lit[k] > 0.6);
     leadOf[k] = wide && a > 0.05 ? [rim + 10, q[1], x - 12, yy + hh/2] : null;
@@ -955,6 +1165,11 @@ function timedQ(el, P, on, cut, dt){
 function setVar(el, k, v){ v = v >= 0.999 ? 1 : v <= 0.001 ? 0 : +v.toFixed(3); const key = '_v' + k; if (el[key] === v) return; el[key] = v;
   if (v === 1) el.style.removeProperty(k); else el.style.setProperty(k, String(v)); }
 window.__clear = () => ({ ...clearLog, faded: clearEls.filter(e => e._clr < 0.999).length, groups: groups.map(g => [g.n, +g.P.toFixed(3), g.why]) });
+// round 7 test hook (tools/stack-clear.mjs, close-rest.mjs, rebirth-contrast.mjs): the art as drawn this frame, in CSS px:
+// the sphere's silhouette, its axis line, the bird's box and flight box, and the art layer's opacity
+window.__art = () => { if (!hero) return null; const o = hero.silhouette, b = hero.birdBox, f = hero.flight;
+  return { disc: [o.x, o.y, o.r], axis: axisNow ? axisNow.slice() : null, bird: b ? [b.x0, b.y0, b.x1, b.y1] : null, flight: f,
+    shown: hero.birdState.shown, op: +getComputedStyle(canvas).opacity, spineOp: +getComputedStyle(svg).opacity, dim: hero.dimNow ?? null }; };
 
 // ---------- a fast jump (v3-r5, review finding 2) ----------
 // The story trails the page by a light 0.3 s scrub. When the page and the story are more than a screen apart (a jump, a
@@ -1048,7 +1263,7 @@ function tOf(n){ const sg = segs.find(x => x.kind === 'blend' && x.a === n); ret
 
 // ---------- the frame ----------
 const proxy = { y: scrollY };
-let scrub = null, intro = still !== null ? 1 : 0, lastNow = performance.now(), frameMs = [], cur = { n: 1, p: 0 };
+let scrub = null, intro = still !== null ? 1 : 0, lastNow = performance.now(), frameMs = [], cur = { n: 1, p: 0 }, bzOn = false;
 function update(){
   const now = performance.now(), dt = Math.min(0.1, (now - lastNow)/1000); lastNow = now; clock += dt;
   frameMs.push(dt*1000); if (frameMs.length > 240) frameMs.shift();
@@ -1066,9 +1281,10 @@ function update(){
   pose.vis = 1;
   if (!wide && g.kind === 'blend' && pose.frame) pose.frame = phoneLift(g, t, pose.frame);
   pose = camera.apply(pose, g, t, vw, innerHeight);   // v3-r5: the close-ups on the phoenix in the hand-overs (camera.js)
+  if (wide && pose.frame) pose.frame = stackClear(pose.frame);   // round 7 (review High 1): never within 64 px of the stack's words
   // M40: the bird keeps flying where the reader stops: the held loop drifts 0.6 s either way along the lap on an 8 s
   // swell (not in the rebirth's own moment or the close)
-  if (pose.loopT !== null && pose.loopT !== undefined && sceneN !== 7 && !(sceneN === 4 && p > 0.2 && p < 0.8)) pose.loopT += 0.6*Math.sin(clock*2*Math.PI/8);
+  if (pose.loopT !== null && pose.loopT !== undefined && !(sceneN === 4 && p > 0.2 && p < 0.8)) pose.loopT += (sceneN === 7 ? 1.6 : 0.6)*Math.sin(clock*2*Math.PI/8);   // round 6: the close too, wider there (round the small sphere the lap is short on screen)
   cur = { n: sceneN, p: +p.toFixed(3), seg: g.kind, t: +t.toFixed(3) };
   if (!reduced) wordDrift();
   // v3-r3: a scene's timeline is at 0 up to and including its first pixel (it read 1 exactly at the boundary, the flash)
@@ -1080,15 +1296,22 @@ function update(){
   { const sec = S(6), act = sceneN === 6 ? (p < 0.25 ? 0 : p < 0.49 ? 1 : p < 0.73 ? 2 : 3) : (y > sec.top ? 3 : 0);
     if (act !== stepOn) { stepOn = act; stepLis.forEach((li, i) => li.classList.toggle('on', i === act));
       trackSpans.forEach((sp, i) => sp.classList.toggle('on', i === act)); placeBar(); } }
+  placeSteps(y);
   // a control while its words are faded out cannot be clicked by accident (it can still be focused: see MOMENT)
   for (const el of fadeEls) { const o = el.style.opacity; el.style.pointerEvents = o !== '' && +o < 0.5 ? 'none' : ''; }
   if (hero) {
-    const calm = level.k, P2 = { ...pose, dim: pose.dim*lerp(0.72 + 0.28*calm, 1, pose.steady || 0), cap: 0.84 };
+    const calm = level.k, P2 = { ...pose, dim: pose.dim*lerp(0.72 + 0.28*calm, 1, pose.steady || 0), cap: 0.84,
+      fieldK: rest.k,   // round 7 (review High 2): at the close, once the mark has formed, only the vector mark remains
+      guard: clamp((pose.closeUp || 0)*3, 0, 1) };   // round 7 (review High 4): in a close-up the bird's light stays off every word
     if (inHero) delete P2.cam;
     if (Q.get('bird') === '0') P2.bird = 0;   // test hook (tools/axis-ink.mjs): the field and the axis alone
     hero.setPose(P2);
     placeNames(pose, g.kind === 'hold' && g.a === 2 ? smooth(0, 0.04, t)*(1 - smooth(0.96, 1, t)) : 0);
-    if (pose.frame) hero.setFlight((pose.closeUp || 0) > 0.02 ? null : flightBox(pose.frame));   // a close camera crops the bird
+    flyFrame(dt);   // round 6 (U42): the phoenix's flight at the close, on its own timer
+    // a close camera crops the bird; the close's flight has its own path, and while it circles (round 7) its own box
+    const fb = pose.frame ? ((pose.closeUp || 0) > 0.02 ? null : fly.k > 0 ? (fly.on && fly.phase === 3 && fly.path ? fly.path.box : null) : flightBox(pose.frame)) : null;
+    if (pose.frame) hero.setFlight(fb);
+    setArtK(stackArtK(pose.frame, fb));   // round 7 (review High 1): the art out of the way of the stack's words
     hero.setParallax(inHero);
     hero.setInteractive(inHero && !reduced);
     if (g.a === 1 && (g.kind === 'hold' || t < 0.5)) {
@@ -1104,6 +1327,11 @@ function update(){
     const hr = hideRects(); hero.setHide((pose.behind || 0) > 0.9 ? [] : hr); setHoles(hr.filter(q => !q.brand));
     spine(pose, g, calm);
     hero.frame(now);
+    // round 7 (review top fix 2): by day the white reveal burns the paper's grain away round the bird (page.css
+    // body::after), so the paper there is #FFFFFF; the variables change only while the reveal burns
+    { const z = hero.blazeAt, r = z && theme() === 'light' ? z.r*smooth(0, 0.5, z.k) : 0;
+      if (r > 0.5) { root.style.setProperty('--bz-r', r.toFixed(1) + 'px'); root.style.setProperty('--bz-x', z.x.toFixed(1) + 'px'); root.style.setProperty('--bz-y', z.y.toFixed(1) + 'px'); bzOn = true; }
+      else if (bzOn) { bzOn = false; root.style.removeProperty('--bz-r'); root.style.removeProperty('--bz-x'); root.style.removeProperty('--bz-y'); } }
     if (pose.frame && pose.frame[2] > 1) silK = clamp(hero.silhouette.r/pose.frame[2], 0.9, 1.15);
     placeHint(inHero);
   }
@@ -1146,20 +1374,38 @@ document.addEventListener('focusin', e => {
   if (reduced || !segs.length) return;
   const sec = e.target.closest('.pinned'); if (!sec) return;
   const n = +sec.dataset.scene, g = segs.find(x => x.kind === 'hold' && x.a === n); if (!g || !(n in MOMENT)) return;
-  const y = g.from + (g.to - g.from)*MOMENT[n];
+  const y = g.from + (g.to - g.from)*MOMENT[n]*(n === 3 ? pf3 : 1);
   if (Math.abs(scrollY - y) > 4 && shown(e.target) < 0.5) { scrollTo(0, y); if (scrub && scrub.getTween()) scrub.getTween().progress(1); }
 });
 
 // ---------- scene 6's track ----------
 const stepLis = $$('#work .steps li'), trackSpans = $$('#work .step-track span'), trackBar = $('#work .step-track .bar');
 let stepOn = -1;
+// round 6 (U41, Yuan, approved by Tim): a desktop's steps arrive one at a time, each a soft fade up (600 ms, 14 px), on
+// time once the scroll reaches it (Show as the stage settles, then every 0.2 of the scene), and stay once in. Several
+// due at once (a jump, a flick) come in together over 120 ms. Back above scene 5's end they reset, so a return sees them again.
+const STEP_AT = [-0.25, 0.2, 0.4, 0.6];
+let stepsIn = 0, stepAt = -1e9;
+function placeSteps(y){
+  if (!wide || reduced || !gsap) return;
+  const h = segs.find(x => x.kind === 'hold' && x.a === 6); if (!h) return;
+  const p6 = (y - h.from)/Math.max(1, h.to - h.from), want = STEP_AT.filter(a => p6 >= a).length;
+  if (want === 0 && y < h.from - vh*1.2 && stepsIn > 0) { stepsIn = 0; gsap.killTweensOf(stepLis); gsap.set(stepLis, { opacity: 0, y: 14 }); return; }
+  if (want <= stepsIn) return;
+  const now = performance.now(), jump = want - stepsIn > 1 || now - stepAt < 400;   // a jump, a flick or a glide through several thresholds: in at once, quickly (copy resolved within 150 ms)
+  stepAt = now;
+  if (jump && stepsIn > 0) gsap.to(stepLis.slice(0, stepsIn), { opacity: 1, y: 0, duration: 0.12, ease: 'power2.out', overwrite: true });   // round 7: no empty target (GSAP warned "target not found")
+  for (let i = stepsIn; i < want; i++) gsap.to(stepLis[i], jump ? { opacity: 1, y: 0, duration: 0.12, ease: 'power2.out' } : { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' });
+  stepsIn = Math.max(stepsIn, want);
+}
+window.__steps = () => stepsIn;
 function placeBar(){ const sp = trackSpans[stepOn]; if (!sp || !trackBar) return;
   trackBar.style.width = sp.offsetWidth + 'px'; trackBar.style.transform = `translateX(${sp.offsetLeft}px)`; }
 
 // ---------- start ----------
 let jumpY = null;
 let fadeEls = [];
-function refresh(){ measure(); stepOn = -1; textEls = $$(TEXT); colEls = $$(COLS); fadeEls = $$('.stage .beat-a, .stage .beat-b, .stage .beat-c, .layers li, .steps li, .close .actions');
+function refresh(){ measure(); stepOn = -1; textEls = $$(TEXT); colEls = $$(COLS); stackEls = $$(STACK_Q); fadeEls = $$('.stage .beat-a, .stage .beat-b, .stage .beat-c, .layers li, .steps li, .close .actions');
   clearEls = $$(CLEAR_Q); for (const el of clearEls) { el._sc = +el.closest('.scene').dataset.scene; el._clr = 1; el._kb = 1; el._btn = el.matches('.btn, .text-link'); el.style.opacity = ''; }
   buildGroups(); buildTimelines(); }
 function boot(){
@@ -1184,6 +1430,25 @@ function boot(){
   window.__at = yy => { if (yy === null) { proxy.y = scrollY; jumpY = null; return; } jumpY = yy; proxy.y = yy; scrollTo(0, yy); };   // v3-r4 test hook (tools/clear-sweep.mjs): hold the story at a scroll position, no smoothing
   if (Q.has('scene')) goto(parseInt(Q.get('scene'), 10), parseFloat(Q.get('p') || '0'));
 }
+// ---------- the hero's button (round 6, U43, Yuan, approved by Tim as one gentle lift) ----------
+// "Talk to an engineer" lifts once, about 3 px and back (700 ms), once the hero has settled (2.8 s after the page is
+// ready), then stays still. It never runs if the reader has already scrolled or pointed at it, and stops at once on
+// either. ?btn=dock gives Yuan's version for comparison: a small Dock-style bounce, twice, 3 s apart. Reduced motion: none.
+(function heroNudge(){
+  const btn = $('.hero .btn.primary'); if (!btn || reduced || !btn.animate) return;
+  let stopped = false, anim = null, timers = [];
+  const stop = () => { if (stopped) return; stopped = true; timers.forEach(clearTimeout); if (anim) anim.cancel(); };
+  addEventListener('scroll', () => { if (scrollY > 2) stop(); }, { passive: true });
+  btn.addEventListener('pointerenter', stop); btn.addEventListener('focus', stop);
+  const dock = Q.get('btn') === 'dock';
+  const lift = () => { if (stopped || scrollY > 2) return;
+    anim = dock
+      ? btn.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-7px)', offset: 0.3, easing: 'cubic-bezier(0.3, 0, 0.6, 1)' }, { transform: 'translateY(0)', offset: 0.6, easing: 'cubic-bezier(0.4, 0, 1, 1)' },
+          { transform: 'translateY(-2.5px)', offset: 0.78 }, { transform: 'translateY(0)' }], { duration: 900, easing: 'cubic-bezier(0.2, 0, 0.4, 1)' })
+      : btn.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-3px)', offset: 0.45 }, { transform: 'translateY(0)' }], { duration: 700, easing: 'cubic-bezier(0.37, 0, 0.63, 1)' }); };
+  const t0 = 2800; timers.push(setTimeout(lift, t0)); if (dock) timers.push(setTimeout(lift, t0 + 3000));
+  window.__nudge = () => ({ stopped, dock, playing: !!anim && anim.playState === 'running' });
+})();
 window.__story = () => { const s = frameMs.slice().sort((a, b) => a - b); return { ...cur, median: +(s[s.length >> 1] || 0).toFixed(2), p95: +(s[Math.floor(s.length*0.95)] || 0).toFixed(2), level: +level.k.toFixed(2) }; };
 if (hero) { window.__hero = hero; if (Q.get('bench') === '1') window.__bench = n => hero.bench(n); }
 addEventListener('resize', () => { if (reduced) return; measure(); });
